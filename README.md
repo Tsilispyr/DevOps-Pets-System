@@ -22,7 +22,7 @@ Devpets-main/
 ├── kind-config.yaml            # Kind cluster configuration
 └── README.md                   # This documentation
 ```
-
+======================================
 ## Components
 
 ### Infrastructure Services

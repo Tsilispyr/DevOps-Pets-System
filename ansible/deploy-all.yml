@@ -397,23 +397,33 @@
           ========================================
           Starting port-forwarding for all services...
 
-    - name: Setup robust port forwarding with indefinite wait
-      shell: |
-        echo "========================================"
-        echo "STARTING PORT FORWARDING SCRIPT"
-        echo "========================================"
-        echo "Calling external port forwarding script..."
+    # - name: Setup robust port forwarding with indefinite wait
+    #   shell: |
+    #     echo "========================================"
+    #     echo "STARTING PORT FORWARDING SCRIPT"
+    #     echo "========================================"
+    #     echo "Calling external port forwarding script..."
         
-        # Run the port forwarding script
-        {{ project_root }}/start-port-forwards.sh
-      register: port_forward_setup
-      failed_when: false
+    #     # Run the port forwarding script
+    #     {{ project_root }}/start-port-forwards.sh
+    #   register: port_forward_setup
+    #   failed_when: false
+
+    - name: Setup robust port forwarding in background
+      shell: "nohup {{ project_root }}/start-port-forwards.sh > /tmp/port-forward.log 2>&1 &"
+      args:
+        chdir: "{{ project_root }}"
+
+    # - name: Display port forwarding status
+    #   debug:
+    #     msg: |
+    #       PORT FORWARDING STATUS:
+    #       {{ port_forward_setup.stdout }}
+
 
     - name: Display port forwarding status
       debug:
-        msg: |
-          PORT FORWARDING STATUS:
-          {{ port_forward_setup.stdout }}
+        msg: "Port forwarding script launched in background. See /tmp/port-forward.log for details."
 
     # Step 12: Display completion
     - name: Step 12 - Display completion
@@ -455,17 +465,11 @@
           deployed by Jenkins.
           
           You can monitor its progress with:
-          tail -f /tmp/app_monitor.log
+          tail -f /tmp/app-service.log
           ========================================
 
-    - name: Ensure Python kubernetes client is installed
-      shell: pip install kubernetes --user
-      register: pip_install
-      changed_when: false
-      failed_when: pip_install.rc != 0 and "already satisfied" not in pip_install.stderr and "already satisfied" not in pip_install.stdout
-
-    - name: Launch the application monitor script in the background
-      shell: "nohup python3 {{ project_root }}/monitor_and_forward.py > /tmp/app_monitor.log 2>&1 &"
+    - name: Launch the app-service.sh monitor script in the background
+      shell: "nohup {{ project_root }}/app-service.sh > /tmp/app-service.log 2>&1 &"
       args:
         chdir: "{{ project_root }}"
 

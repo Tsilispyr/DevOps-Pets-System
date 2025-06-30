@@ -9,12 +9,14 @@
 # Port Mappings:
 # - Frontend: 8081 -> 80
 # - Backend:  8080 -> 8080
+# - MinIO API: 9000 -> 9000
+# - MinIO Console: 9001 -> 9001
 
 # --- Configuration ---
 NAMESPACE="devops-pets"
-APPS=("backend" "frontend")
-declare -A PORTS=( ["backend"]="8080:8080" ["frontend"]="8081:80" )
-declare -A URLS=( ["backend"]="http://backend:8080/actuator/health" ["frontend"]="http://frontend:80" )
+APPS=("backend" "frontend" "minio")
+declare -A PORTS=( ["backend"]="8080:8080" ["frontend"]="8081:80" ["minio"]="9000:9000" )
+declare -A URLS=( ["backend"]="http://backend:8080/actuator/health" ["frontend"]="http://frontend:80" ["minio"]="http://minio:9000" )
 declare -A PIDS # Associative array to hold PIDs of port-forward processes
 
 # --- Functions ---
@@ -137,7 +139,11 @@ while true; do
     
     # Refresh all applications based on the new build
     for app in "${APPS[@]}"; do
-        start_or_refresh_forward "$app"
+        log "Starting port-forward for service '${app}' on ports ${PORTS[$app]}..."
+        stop_forward "$app"
+        nohup kubectl port-forward -n "$NAMESPACE" service/${app} ${PORTS[$app]} > "/tmp/${app}-pf.log" 2>&1 &
+        PIDS["$app"]=$!
+        log "Successfully started '${app}' port-forward with PID ${PIDS[$app]}."
     done
     
     log "Cleaning up Jenkins build signal: $jenkins_signal"
