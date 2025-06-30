@@ -58,4 +58,4 @@ kubeconfig
 .dockerignore
 
 # Ansible
-*.retry 
+*.retry ansible/kubectl
