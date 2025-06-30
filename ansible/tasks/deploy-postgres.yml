@@ -1,0 +1,17 @@
+---
+- name: Deploy PostgreSQL
+  shell: kubectl apply -f {{ project_root }}/k8s/{{ item }} -n {{ namespace }}
+  loop:
+    - postgres/postgres-secret.yaml
+    - postgres/postgres-pvc.yaml
+    - postgres/postgres-deployment.yaml
+    - postgres/postgres-service.yaml
+  register: postgres_deploy
+
+- name: Display PostgreSQL deployment status
+  debug:
+    msg: |
+      PostgreSQL deployment status:
+      {% for item in postgres_deploy.results %}
+      {{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}
+      {% endfor %} 

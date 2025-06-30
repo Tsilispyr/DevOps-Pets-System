@@ -1,0 +1,183 @@
+---
+- name: Deploy Applications to Kubernetes
+  hosts: localhost
+  gather_facts: no
+  become: no
+  vars:
+    project_root: "{{ playbook_dir }}/.."
+    namespace: "devops-pets"
+  
+  tasks:
+    - name: Display application deployment header
+      debug:
+        msg: |
+          ========================================
+          DEPLOYING APPLICATIONS
+          ========================================
+          Building and deploying backend and frontend...
+
+    - name: Check if backend exists
+      stat:
+        path: "{{ project_root }}/Ask"
+      register: backend_exists
+
+    - name: Check if frontend exists
+      stat:
+        path: "{{ project_root }}/frontend"
+      register: frontend_exists
+
+    - name: Build backend Docker image
+      shell: |
+        cd "{{ project_root }}/Ask"
+        docker build -t devops-pets-backend:latest .
+      when: backend_exists.stat.exists
+      register: backend_build
+
+    - name: Build frontend Docker image
+      shell: |
+        cd "{{ project_root }}/frontend"
+        docker build -t devops-pets-frontend:latest .
+      when: frontend_exists.stat.exists
+      register: frontend_build
+
+    - name: Load backend image into Kind
+      shell: kind load docker-image devops-pets-backend:latest --name devops-pets
+      when: backend_exists.stat.exists and backend_build.rc == 0
+      register: backend_load
+
+    - name: Load frontend image into Kind
+      shell: kind load docker-image devops-pets-frontend:latest --name devops-pets
+      when: frontend_exists.stat.exists and frontend_build.rc == 0
+      register: frontend_load
+
+    - name: Deploy backend to Kubernetes
+      shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: backend
+          namespace: {{ namespace }}
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: backend
+          template:
+            metadata:
+              labels:
+                app: backend
+            spec:
+              containers:
+              - name: backend
+                image: devops-pets-backend:latest
+                ports:
+                - containerPort: 8080
+                env:
+                - name: SPRING_DATASOURCE_URL
+                  value: jdbc:postgresql://postgres:5432/devops_pets
+                - name: SPRING_DATASOURCE_USERNAME
+                  value: postgres
+                - name: SPRING_DATASOURCE_PASSWORD
+                  value: postgres
+        EOF
+      when: backend_exists.stat.exists and backend_load.rc == 0
+      register: backend_deploy
+
+    - name: Deploy frontend to Kubernetes
+      shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: frontend
+          namespace: {{ namespace }}
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: frontend
+          template:
+            metadata:
+              labels:
+                app: frontend
+            spec:
+              containers:
+              - name: frontend
+                image: devops-pets-frontend:latest
+                ports:
+                - containerPort: 80
+        EOF
+      when: frontend_exists.stat.exists and frontend_load.rc == 0
+      register: frontend_deploy
+
+    - name: Create backend service
+      shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: backend
+          namespace: {{ namespace }}
+        spec:
+          selector:
+            app: backend
+          ports:
+          - port: 8080
+            targetPort: 8080
+        EOF
+      when: backend_exists.stat.exists and backend_deploy.rc == 0
+      register: backend_service
+
+    - name: Create frontend service
+      shell: |
+        cat <<EOF | kubectl apply -f -
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: frontend
+          namespace: {{ namespace }}
+        spec:
+          selector:
+            app: frontend
+          ports:
+          - port: 80
+            targetPort: 80
+        EOF
+      when: frontend_exists.stat.exists and frontend_deploy.rc == 0
+      register: frontend_service
+
+    - name: Wait for deployments to be ready
+      shell: kubectl wait --for=condition=available --timeout=300s deployment/{{ item }} -n {{ namespace }}
+      loop:
+        - backend
+        - frontend
+      when: >
+        (backend_exists.stat.exists and backend_deploy.rc == 0) or
+        (frontend_exists.stat.exists and frontend_deploy.rc == 0)
+      register: deployment_wait
+      failed_when: false
+
+    - name: Display deployment results
+      debug:
+        msg: |
+          APPLICATION DEPLOYMENT RESULTS:
+          {% if backend_exists.stat.exists %}
+          Backend: {{ 'OK! Deployed' if backend_deploy.rc == 0 else 'ERR! Failed' }}
+          {% else %}
+          Backend: WARN! Directory not found
+          {% endif %}
+          {% if frontend_exists.stat.exists %}
+          Frontend: {{ 'OK! Deployed' if frontend_deploy.rc == 0 else 'ERR! Failed' }}
+          {% else %}
+          Frontend: WARN! Directory not found
+          {% endif %}
+
+    - name: Display completion message
+      debug:
+        msg: |
+          ========================================
+          APPLICATION DEPLOYMENT COMPLETED
+          ========================================
+          Applications deployed successfully.
+          Access via Jenkins pipelines or direct port forwarding. 

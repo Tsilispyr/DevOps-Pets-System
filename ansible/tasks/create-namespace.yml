@@ -1,0 +1,10 @@
+---
+- name: Create namespace
+  shell: kubectl create namespace {{ namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  register: namespace_creation
+
+- name: Display namespace status
+  debug:
+    msg: |
+      Namespace status:
+      {{ 'OK! Created' if namespace_creation.rc == 0 else 'ERR! Failed' }} 

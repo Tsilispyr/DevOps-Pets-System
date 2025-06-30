@@ -1,0 +1,19 @@
+---
+- name: Check if Git is installed
+  shell: git --version
+  register: git_check
+  failed_when: false
+
+- name: Install Git if not present
+  apt:
+    name: git
+    state: present
+    update_cache: yes
+  become: yes
+  when: git_check.rc != 0
+  ignore_errors: yes
+
+- name: Display Git installation status
+  debug:
+    msg: |
+      Git: {{ 'OK! Installed' if git_check.rc == 0 else 'Installation attempted' }} 

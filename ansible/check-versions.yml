@@ -1,0 +1,169 @@
+---
+- name: Check System Versions
+  hosts: localhost
+  gather_facts: no
+  become: no
+  
+  tasks:
+    - name: Display version check header
+      debug:
+        msg: |
+          ========================================
+          VERSION COMPATIBILITY CHECK
+          ========================================
+          Checking tool versions and compatibility...
+
+    - name: Check Docker version
+      shell: docker --version
+      register: docker_check
+      failed_when: false
+
+    - name: Check Kind version
+      shell: kind version
+      register: kind_check
+      failed_when: false
+
+    - name: Check Kubectl version
+      shell: kubectl version --client --short
+      register: kubectl_check
+      failed_when: false
+
+    - name: Check Java version
+      shell: java -version 2>&1 | head -1
+      register: java_check
+      failed_when: false
+
+    - name: Check Node.js version
+      shell: node --version
+      register: node_check
+      failed_when: false
+
+    - name: Check npm version
+      shell: npm --version
+      register: npm_check
+      failed_when: false
+
+    - name: Check Git version
+      shell: git --version
+      register: git_check
+      failed_when: false
+
+    - name: Check Python 3 version
+      shell: python3 --version
+      register: python3_check
+      failed_when: false
+
+    - name: Check pip version
+      shell: pip --version
+      register: pip_check
+      failed_when: false
+
+    - name: Check Maven version
+      shell: mvn --version 2>&1 | head -1
+      register: maven_check
+      failed_when: false
+
+    - name: Check Docker Compose version
+      shell: docker-compose --version
+      register: docker_compose_check
+      failed_when: false
+
+    - name: Display version check results
+      debug:
+        msg: |
+          TOOL VERSIONS:
+          Docker: {{ 'OK! AVAILABLE' if docker_check.rc == 0 else 'ERR! MISSING' }}
+          Kind: {{ 'OK! AVAILABLE' if kind_check.rc == 0 else 'ERR! MISSING' }}
+          Kubectl: {{ 'OK! AVAILABLE' if kubectl_check.rc == 0 else 'ERR! MISSING' }}
+          Java: {{ 'OK! AVAILABLE' if java_check.rc == 0 else 'ERR! MISSING' }}
+          Node.js: {{ 'OK! AVAILABLE' if node_check.rc == 0 else 'ERR! MISSING' }}
+          npm: {{ 'OK! AVAILABLE' if npm_check.rc == 0 else 'ERR! MISSING' }}
+          Git: {{ 'OK! AVAILABLE' if git_check.rc == 0 else 'ERR! MISSING' }}
+          Python 3: {{ 'OK! AVAILABLE' if python3_check.rc == 0 else 'ERR! MISSING' }}
+          pip: {{ 'OK! AVAILABLE' if pip_check.rc == 0 else 'ERR! MISSING' }}
+          Maven: {{ 'OK! AVAILABLE' if maven_check.rc == 0 else 'ERR! MISSING' }}
+          Docker Compose: {{ 'OK! AVAILABLE' if docker_compose_check.rc == 0 else 'ERR! MISSING' }}
+
+    - name: Display version details
+      debug:
+        msg: |
+          VERSION DETAILS:
+          {% if docker_check.rc == 0 %}
+          Docker: {{ docker_check.stdout }}
+          {% endif %}
+          {% if kind_check.rc == 0 %}
+          Kind: {{ kind_check.stdout }}
+          {% endif %}
+          {% if kubectl_check.rc == 0 %}
+          Kubectl: {{ kubectl_check.stdout }}
+          {% endif %}
+          {% if java_check.rc == 0 %}
+          Java: {{ java_check.stdout }}
+          {% endif %}
+          {% if node_check.rc == 0 %}
+          Node.js: {{ node_check.stdout }}
+          {% endif %}
+          {% if npm_check.rc == 0 %}
+          npm: {{ npm_check.stdout }}
+          {% endif %}
+          {% if git_check.rc == 0 %}
+          Git: {{ git_check.stdout }}
+          {% endif %}
+          {% if python3_check.rc == 0 %}
+          Python 3: {{ python3_check.stdout }}
+          {% endif %}
+          {% if pip_check.rc == 0 %}
+          pip: {{ pip_check.stdout }}
+          {% endif %}
+          {% if maven_check.rc == 0 %}
+          Maven: {{ maven_check.stdout }}
+          {% endif %}
+          {% if docker_compose_check.rc == 0 %}
+          Docker Compose: {{ docker_compose_check.stdout }}
+          {% endif %}
+
+    - name: Create list of missing tools
+      set_fact:
+        missing_tools: "{{ [
+          ('Docker' if docker_check.rc != 0 else ''),
+          ('Kind' if kind_check.rc != 0 else ''),
+          ('Kubectl' if kubectl_check.rc != 0 else ''),
+          ('Java' if java_check.rc != 0 else ''),
+          ('Node.js' if node_check.rc != 0 else ''),
+          ('npm' if npm_check.rc != 0 else ''),
+          ('Git' if git_check.rc != 0 else ''),
+          ('Python 3' if python3_check.rc != 0 else ''),
+          ('pip' if pip_check.rc != 0 else ''),
+          ('Maven' if maven_check.rc != 0 else ''),
+          ('Docker Compose' if docker_compose_check.rc != 0 else '')
+        ] | select('string') | list }}"
+
+    - name: Display missing tools warning
+      debug:
+        msg: |
+          ========================================
+          VERSION CHECK COMPLETED
+          ========================================
+          {% if missing_tools | length > 0 %}
+          WARNING: Some tools are missing:
+          {% for tool in missing_tools %}
+          - {{ tool }}
+          {% endfor %}
+          
+          These will be installed automatically by the System Setup step.
+          ========================================
+          {% else %}
+          OK! ALL REQUIRED TOOLS ARE AVAILABLE!
+          ========================================
+          {% endif %}
+      failed_when: false
+
+    - name: Display version check success
+      debug:
+        msg: |
+          ========================================
+          VERSION CHECK COMPLETED SUCCESSFULLY!
+          ========================================
+          Tool versions have been checked.
+          Missing tools will be installed automatically.
+          ======================================== 

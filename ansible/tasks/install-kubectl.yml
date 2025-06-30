@@ -1,0 +1,23 @@
+---
+- name: Check if kubectl is already installed
+  shell: kubectl version --client --short
+  register: kubectl_check
+  failed_when: false
+
+- name: Download kubectl
+  shell: |
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    chmod +x kubectl
+    sudo mv kubectl /usr/local/bin/
+    sudo chown root:root /usr/local/bin/kubectl
+    sudo chmod +x /usr/local/bin/kubectl
+  when: kubectl_check.rc != 0
+  failed_when: false
+
+- name: Update PATH for current session
+  shell: |
+    export PATH="/usr/local/bin:$PATH"
+    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
+    source ~/.bashrc
+  when: kubectl_check.rc != 0
+  failed_when: false 

@@ -1,0 +1,26 @@
+---
+# Placeholder - No image build/load steps defined
+- name: No image build/load steps (placeholder)
+  debug:
+    msg: "Skipping image build/load (placeholder task)"
+
+- name: Build and load custom Docker images
+  shell: |
+    # Build PostgreSQL image
+    docker build -t {{ postgres_image }} {{ project_root }}/k8s/postgres/
+    
+    # Build Jenkins image
+    docker build -t {{ jenkins_image }} {{ project_root }}/k8s/jenkins/
+    
+    # Load images into Kind cluster
+    kind load docker-image {{ postgres_image }} --name {{ cluster_name }}
+    kind load docker-image {{ jenkins_image }} --name {{ cluster_name }}
+    
+    echo "OK! Images built and loaded successfully"
+  register: image_build_result
+
+- name: Display image build status
+  debug:
+    msg: |
+      Image build status:
+      {{ image_build_result.stdout }} 

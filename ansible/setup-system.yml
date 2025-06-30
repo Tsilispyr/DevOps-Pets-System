@@ -1,0 +1,263 @@
+---
+- name: Setup System Tools
+  hosts: localhost
+  gather_facts: no
+  become: no
+  
+  tasks:
+    - name: Display setup header
+      debug:
+        msg: |
+          ========================================
+          SYSTEM SETUP
+          ========================================
+          Checking and installing required tools...
+
+    - name: Check Docker version
+      shell: docker --version
+      register: docker_check
+      failed_when: false
+
+    - name: Check Kind version
+      shell: kind version
+      register: kind_check
+      failed_when: false
+
+    - name: Check Kubectl version
+      shell: kubectl version --client --short
+      register: kubectl_check
+      failed_when: false
+
+    - name: Check Java version
+      shell: java -version 2>&1 | head -1
+      register: java_check
+      failed_when: false
+
+    - name: Check Node.js version
+      shell: node --version
+      register: node_check
+      failed_when: false
+
+    - name: Check npm version
+      shell: npm --version
+      register: npm_check
+      failed_when: false
+
+    - name: Check Git version
+      shell: git --version
+      register: git_check
+      failed_when: false
+
+    - name: Check Python 3 version
+      shell: python3 --version
+      register: python3_check
+      failed_when: false
+
+    - name: Check pip version
+      shell: pip --version
+      register: pip_check
+      failed_when: false
+
+    - name: Check Maven version
+      shell: mvn --version 2>&1 | head -1
+      register: maven_check
+      failed_when: false
+
+    - name: Check Docker Compose version
+      shell: docker-compose --version
+      register: docker_compose_check
+      failed_when: false
+
+    - name: Create list of missing tools
+      set_fact:
+        missing_tools: "{{ [
+          ('Docker' if docker_check.rc != 0 else ''),
+          ('Kind' if kind_check.rc != 0 else ''),
+          ('Kubectl' if kubectl_check.rc != 0 else ''),
+          ('Java' if java_check.rc != 0 else ''),
+          ('Node.js' if node_check.rc != 0 else ''),
+          ('npm' if npm_check.rc != 0 else ''),
+          ('Git' if git_check.rc != 0 else ''),
+          ('Python 3' if python3_check.rc != 0 else ''),
+          ('pip' if pip_check.rc != 0 else ''),
+          ('Maven' if maven_check.rc != 0 else ''),
+          ('Docker Compose' if docker_compose_check.rc != 0 else '')
+        ] | select('string') | list }}"
+
+    - name: Display initial tool status
+      debug:
+        msg: |
+          INITIAL TOOL STATUS:
+          Docker: {{ 'OK! AVAILABLE' if docker_check.rc == 0 else 'ERR! MISSING' }}
+          Kind: {{ 'OK! AVAILABLE' if kind_check.rc == 0 else 'ERR! MISSING' }}
+          Kubectl: {{ 'OK! AVAILABLE' if kubectl_check.rc == 0 else 'ERR! MISSING' }}
+          Java: {{ 'OK! AVAILABLE' if java_check.rc == 0 else 'ERR! MISSING' }}
+          Node.js: {{ 'OK! AVAILABLE' if node_check.rc == 0 else 'ERR! MISSING' }}
+          npm: {{ 'OK! AVAILABLE' if npm_check.rc == 0 else 'ERR! MISSING' }}
+          Git: {{ 'OK! AVAILABLE' if git_check.rc == 0 else 'ERR! MISSING' }}
+          Python 3: {{ 'OK! AVAILABLE' if python3_check.rc == 0 else 'ERR! MISSING' }}
+          pip: {{ 'OK! AVAILABLE' if pip_check.rc == 0 else 'ERR! MISSING' }}
+          Maven: {{ 'OK! AVAILABLE' if maven_check.rc == 0 else 'ERR! MISSING' }}
+          Docker Compose: {{ 'OK! AVAILABLE' if docker_compose_check.rc == 0 else 'ERR! MISSING' }}
+
+    - name: Count available tools
+      set_fact:
+        available_tools: "{{ 11 - missing_tools | length }}"
+
+    - name: Count missing tools
+      set_fact:
+        missing_count: "{{ missing_tools | length }}"
+
+    - name: Check if tools need installation
+      set_fact:
+        needs_installation: "{{ missing_tools | length > 0 }}"
+
+    - name: Display setup summary
+      debug:
+        msg: |
+          ========================================
+          SYSTEM SETUP SUMMARY
+          ========================================
+          Total tools checked: 11
+          Available tools: {{ available_tools }}
+          Tools to install: {{ missing_count }}
+
+          {% if needs_installation %}
+          TOOLS TO INSTALL:
+          {% for tool in missing_tools %}
+          - {{ tool }}
+          {% endfor %}
+
+          Starting installation...
+          ========================================
+          {% else %}
+          OK! ALL REQUIRED TOOLS ARE AVAILABLE!
+          ========================================
+          {% endif %}
+
+    - name: Include prerequisites installation
+      include_tasks: install-prerequisites.yml
+      when: needs_installation
+
+    - name: Verify Docker installation
+      shell: docker --version
+      register: docker_verification
+      failed_when: false
+
+    - name: Verify Kind installation
+      shell: kind version
+      register: kind_verification
+      failed_when: false
+
+    - name: Verify Kubectl installation
+      shell: kubectl version --client --short
+      register: kubectl_verification
+      failed_when: false
+
+    - name: Verify Java installation
+      shell: java -version 2>&1 | head -1
+      register: java_verification
+      failed_when: false
+
+    - name: Verify Node.js installation
+      shell: node --version
+      register: node_verification
+      failed_when: false
+
+    - name: Verify npm installation
+      shell: npm --version
+      register: npm_verification
+      failed_when: false
+
+    - name: Verify Git installation
+      shell: git --version
+      register: git_verification
+      failed_when: false
+
+    - name: Verify Python 3 installation
+      shell: python3 --version
+      register: python3_verification
+      failed_when: false
+
+    - name: Verify pip installation
+      shell: pip --version
+      register: pip_verification
+      failed_when: false
+
+    - name: Verify Maven installation
+      shell: mvn --version 2>&1 | head -1
+      register: maven_verification
+      failed_when: false
+
+    - name: Verify Docker Compose installation
+      shell: docker-compose --version
+      register: docker_compose_verification
+      failed_when: false
+
+    - name: Display final tool status
+      debug:
+        msg: |
+          FINAL TOOL STATUS:
+          Docker: {{ 'OK! AVAILABLE' if docker_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Kind: {{ 'OK! AVAILABLE' if kind_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Kubectl: {{ 'OK! AVAILABLE' if kubectl_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Java: {{ 'OK! AVAILABLE' if java_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Node.js: {{ 'OK! AVAILABLE' if node_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          npm: {{ 'OK! AVAILABLE' if npm_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Git: {{ 'OK! AVAILABLE' if git_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Python 3: {{ 'OK! AVAILABLE' if python3_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          pip: {{ 'OK! AVAILABLE' if pip_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Maven: {{ 'OK! AVAILABLE' if maven_verification.rc == 0 else 'ERR! STILL MISSING' }}
+          Docker Compose: {{ 'OK! AVAILABLE' if docker_compose_verification.rc == 0 else 'ERR! STILL MISSING' }}
+
+    - name: Display installed versions
+      debug:
+        msg: |
+          INSTALLED VERSIONS:
+          {% if docker_verification.rc == 0 %}
+          OK! Docker: {{ docker_verification.stdout }}
+          {% endif %}
+          {% if kind_verification.rc == 0 %}
+          OK! Kind: {{ kind_verification.stdout }}
+          {% endif %}
+          {% if kubectl_verification.rc == 0 %}
+          OK! Kubectl: {{ kubectl_verification.stdout }}
+          {% endif %}
+          {% if java_verification.rc == 0 %}
+          OK! Java: {{ java_verification.stdout }}
+          {% endif %}
+          {% if node_verification.rc == 0 %}
+          OK! Node.js: {{ node_verification.stdout }}
+          {% endif %}
+          {% if npm_verification.rc == 0 %}
+          OK! npm: {{ npm_verification.stdout }}
+          {% endif %}
+          {% if git_verification.rc == 0 %}
+          OK! Git: {{ git_verification.stdout }}
+          {% endif %}
+          {% if python3_verification.rc == 0 %}
+          OK! Python 3: {{ python3_verification.stdout }}
+          {% endif %}
+          {% if pip_verification.rc == 0 %}
+          OK! pip: {{ pip_verification.stdout }}
+          {% endif %}
+          {% if maven_verification.rc == 0 %}
+          OK! Maven: {{ maven_verification.stdout }}
+          {% endif %}
+          {% if docker_compose_verification.rc == 0 %}
+          OK! Docker Compose: {{ docker_compose_verification.stdout }}
+          {% endif %}
+
+    - name: Display setup completion
+      debug:
+        msg: |
+          ========================================
+          SYSTEM SETUP COMPLETED!
+          ========================================
+          {% if missing_tools | length > 0 %}
+          Note: Some tools may still be missing but deployment will continue.
+          Missing tools: {{ missing_tools | join(', ') }}
+          {% else %}
+          All required tools are now available.
+          {% endif %}
+          System is ready for deployment. 

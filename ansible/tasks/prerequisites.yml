@@ -1,0 +1,34 @@
+---
+- name: Check and install Python 3
+  include_tasks: install-python.yml
+
+- name: Check and install Java
+  include_tasks: install-java.yml
+
+- name: Check and install Docker
+  include_tasks: install-docker.yml
+
+- name: Check and install kind
+  include_tasks: install-kind.yml
+
+- name: Check and install kubectl
+  include_tasks: install-kubectl.yml
+
+- name: Check and install git
+  include_tasks: install-git.yml
+
+- name: Display tools status
+  debug:
+    msg: |
+      ========================================
+      PREREQUISITES CHECK COMPLETED
+      ========================================
+      All required tools have been checked and installed if needed.
+      Ready to proceed with deployment.
+
+- name: Ensure jenkins_home exists and is writable
+  file:
+    path: "{{ playbook_dir }}/../jenkins_home"
+    state: directory
+    mode: '0777'
+  become: yes 

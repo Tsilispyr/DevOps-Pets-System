@@ -1,0 +1,14 @@
+---
+- name: Apply base configurations
+  shell: kubectl apply -f {{ project_root }}/k8s/{{ item.file }} -n {{ item.namespace }}
+  loop:
+    - { file: "jenkins/jenkins-admin-rbac.yaml", namespace: "kube-system" }
+  register: base_config_apply
+
+- name: Display base config status
+  debug:
+    msg: |
+      Base configuration status:
+      {% for item in base_config_apply.results %}
+      {{ item.item.file }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}
+      {% endfor %} 

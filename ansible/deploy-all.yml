@@ -1,0 +1,471 @@
+---
+# Main deployment playbook for DevOps Pets
+# Mimics the logic of devops-pets-up.sh but only for PostgreSQL, Jenkins, and MailHog
+
+- name: Deploy DevOps Pets Infrastructure
+  hosts: localhost
+  gather_facts: no
+  become: no
+  vars:
+    project_root: "{{ playbook_dir }}/.."
+    k8s_dir: "k8s"
+    namespace: "devops-pets"
+    cluster_name: "devops-pets"
+    jenkins_home_path: "{{ project_root }}/jenkins_home"
+    postgres_image: "devops-pets-postgres:latest"
+    jenkins_image: "devops-pets-jenkins:latest"
+    mailhog_image: "mailhog/mailhog:latest"
+    timeout: "300s"
+
+  tasks:
+    - name: Display deployment header
+      debug:
+        msg: |
+          ========================================
+          DEVOPS PETS INFRASTRUCTURE DEPLOYMENT
+          ========================================
+          Mimicking devops-pets-up.sh logic
+          Services: PostgreSQL, Jenkins, MailHog
+          ========================================
+
+    # Step 1: Complete cleanup of ALL existing resources
+    - name: Step 1 - Complete cleanup of ALL existing resources
+      debug:
+        msg: |
+          ========================================
+          STEP 1: COMPLETE CLEANUP
+          ========================================
+
+    - name: Stop all port forwarding
+      shell: pkill -f "kubectl port-forward" || true
+      failed_when: false
+
+    - name: Wait for port forwarding to stop
+      shell: sleep 3
+
+    - name: Force delete namespace completely
+      shell: kubectl delete namespace {{ namespace }} --force --grace-period=0 --ignore-not-found=true || true
+      failed_when: false
+
+    - name: Force delete any remaining resources
+      shell: |
+        kubectl delete all --all -n {{ namespace }} --force --grace-period=0 --ignore-not-found=true || true
+        kubectl delete pvc --all -n {{ namespace }} --force --grace-period=0 --ignore-not-found=true || true
+        kubectl delete pv --all --force --grace-period=0 --ignore-not-found=true || true
+      failed_when: false
+
+    - name: Wait for namespace deletion
+      shell: |
+        while kubectl get namespace {{ namespace }} 2>/dev/null; do
+          echo "Waiting for namespace deletion..."
+          sleep 3
+        done
+      failed_when: false
+
+    - name: Get existing Kind clusters
+      shell: kind get clusters
+      register: existing_clusters
+      failed_when: false
+
+    - name: Display existing clusters
+      debug:
+        msg: "Existing clusters: {{ existing_clusters.stdout_lines }}"
+
+    - name: Delete ALL Kind clusters
+      shell: |
+        for cluster in $(kind get clusters); do
+          echo "Deleting cluster: $cluster"
+          kind delete cluster --name "$cluster" || true
+        done
+      failed_when: false
+
+    - name: Wait for clusters to be deleted
+      shell: sleep 10
+
+    - name: Double check and force delete any remaining clusters
+      shell: |
+        for cluster in $(kind get clusters 2>/dev/null || echo ""); do
+          if [ ! -z "$cluster" ]; then
+            echo "Force deleting remaining cluster: $cluster"
+            kind delete cluster --name "$cluster" --force || true
+          fi
+        done
+      failed_when: false
+
+    - name: Wait again for cluster deletion
+      shell: sleep 5
+
+    - name: Verify all clusters are deleted
+      shell: kind get clusters
+      register: remaining_clusters
+      failed_when: false
+
+    - name: Display remaining clusters
+      debug:
+        msg: "Remaining clusters: {{ remaining_clusters.stdout_lines }}"
+
+    - name: Clean up Docker resources
+      shell: |
+        docker stop $(docker ps -q --filter "name=devops-pets") 2>/dev/null || true
+        docker stop $(docker ps -q --filter "name=jenkins") 2>/dev/null || true
+        docker stop $(docker ps -q --filter "name=postgres") 2>/dev/null || true
+        docker stop $(docker ps -q --filter "name=mailhog") 2>/dev/null || true
+        
+        docker rm $(docker ps -aq --filter "name=devops-pets") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=jenkins") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=postgres") 2>/dev/null || true
+        docker rm $(docker ps -aq --filter "name=mailhog") 2>/dev/null || true
+        
+        docker rmi {{ postgres_image }} 2>/dev/null || true
+        docker rmi {{ jenkins_image }} 2>/dev/null || true
+      failed_when: false
+
+    - name: Remove PID files
+      shell: rm -f /tmp/jenkins-port-forward.pid /tmp/mailhog-port-forward.pid || true
+      failed_when: false
+
+    - name: Display cleanup completion
+      debug:
+        msg: |
+          ========================================
+          CLEANUP COMPLETED SUCCESSFULLY!
+          ========================================
+
+    # Step 2: Check and install prerequisites
+    - name: Step 2 - Check and install prerequisites
+      include_tasks: tasks/prerequisites.yml
+
+    # Step 3: Create Kind cluster
+    - name: Step 3 - Create Kind cluster
+      debug:
+        msg: |
+          ========================================
+          STEP 3: SETTING UP KIND CLUSTER
+          ========================================
+          Creating new kind cluster with jenkins_home mount...
+
+    - name: Create new Kind cluster with jenkins_home mount
+      shell: |
+        kind create cluster --name {{ cluster_name }} --config {{ project_root }}/kind-config.yaml
+        echo "OK! Created new Kind cluster"
+      register: cluster_create
+
+    - name: Display cluster creation status
+      debug:
+        msg: |
+          CLUSTER CREATION STATUS:
+          {{ cluster_create.stdout }}
+
+    - name: Export kubeconfig
+      shell: kind export kubeconfig --name {{ cluster_name }}
+      register: kubeconfig_export
+
+    - name: Verify cluster is ready
+      shell: kubectl cluster-info
+      register: cluster_info
+
+    - name: Display cluster info
+      debug:
+        msg: |
+          CLUSTER INFORMATION:
+          - name: {{ cluster_name }}
+          - API Server: {{ cluster_info.stdout }}
+          - Kubeconfig: Exported to current directory
+
+    # Step 4: Create namespace
+    - name: Step 4 - Create namespace
+      debug:
+        msg: |
+          ========================================
+          STEP 4: CREATING NAMESPACE
+          ========================================
+          Creating namespace: {{ namespace }}
+
+    - name: Create namespace
+      shell: kubectl create namespace {{ namespace }}
+      register: namespace_create
+
+    - name: Display namespace status
+      debug:
+        msg: |
+          NAMESPACE STATUS:
+          {{ namespace_create.stdout }}
+
+    # Step 5: Build and Load Docker Images
+    - name: Step 5 - Build and Load Docker Images
+      debug:
+        msg: |
+          ========================================
+          STEP 5: BUILDING AND LOADING DOCKER IMAGES
+          ========================================
+
+    - name: Build PostgreSQL image
+      shell: |
+        echo "Building PostgreSQL image: {{ postgres_image }}"
+        cd {{ project_root }}/{{ k8s_dir }}/postgres
+        docker build -t {{ postgres_image }} .
+        echo "OK! PostgreSQL image built"
+      register: postgres_build
+
+    - name: Build Jenkins image
+      shell: |
+        echo "Building Jenkins image: {{ jenkins_image }}"
+        cd {{ project_root }}/{{ k8s_dir }}/jenkins
+        docker build -t {{ jenkins_image }} .
+        echo "OK! Jenkins image built"
+      register: jenkins_build
+
+    - name: Load images into kind cluster
+      shell: |
+        echo "Loading images into kind cluster..."
+        kind load docker-image {{ postgres_image }} --name {{ cluster_name }}
+        kind load docker-image {{ jenkins_image }} --name {{ cluster_name }}
+        echo "OK! Images loaded successfully"
+      register: images_load
+
+    - name: Display image build and load status
+      debug:
+        msg: |
+          IMAGE BUILD AND LOAD STATUS:
+          PostgreSQL build: {{ postgres_build.stdout }}
+          Jenkins build: {{ jenkins_build.stdout }}
+          Images load: {{ images_load.stdout }}
+
+    # Step 6: Apply Base Configurations (Secrets and ConfigMaps)
+    - name: Step 6 - Apply Base Configurations
+      debug:
+        msg: |
+          ========================================
+          STEP 6: APPLYING BASE CONFIGURATIONS
+          ========================================
+          Applying secrets and configmaps...
+
+    - name: Apply PostgreSQL secret
+      shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/postgres/postgres-secret.yaml -n {{ namespace }}
+      register: postgres_secret_apply
+
+    - name: Apply Jenkins RBAC (to kube-system namespace)
+      shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/jenkins/jenkins-admin-rbac.yaml
+      register: jenkins_rbac_apply
+
+    - name: Display base config status
+      debug:
+        msg: |
+          BASE CONFIG STATUS:
+          PostgreSQL secret: {{ 'OK! Applied' if postgres_secret_apply.rc == 0 else 'ERR! Failed' }}
+          Jenkins RBAC: {{ 'OK! Applied' if jenkins_rbac_apply.rc == 0 else 'ERR! Failed' }}
+
+    # Step 7: Deploy Core Infrastructure (PostgreSQL)
+    - name: Step 7 - Deploy Core Infrastructure (PostgreSQL)
+      debug:
+        msg: |
+          ========================================
+          STEP 7: DEPLOYING CORE INFRASTRUCTURE
+          ========================================
+          Deploying PostgreSQL...
+
+    - name: Deploy PostgreSQL infrastructure
+      shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/{{ item }} -n {{ namespace }}
+      loop:
+        - postgres/postgres-pvc.yaml
+        - postgres/postgres-deployment.yaml
+        - postgres/postgres-service.yaml
+      register: postgres_deploy
+
+    - name: Wait for PostgreSQL to be ready
+      shell: |
+        echo "Waiting for PostgreSQL to be ready..."
+        kubectl wait --for=condition=available --timeout={{ timeout }} deployment/postgres -n {{ namespace }}
+        echo "OK! PostgreSQL is ready"
+      register: postgres_ready
+
+    - name: Display PostgreSQL status
+      debug:
+        msg: |
+          POSTGRESQL STATUS:
+          Deployment: {% for item in postgres_deploy.results %}{{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}{% endfor %}
+          Ready: {{ postgres_ready.stdout }}
+
+    # Step 8: Deploy Jenkins
+    - name: Step 8 - Deploy Jenkins
+      debug:
+        msg: |
+          ========================================
+          STEP 8: DEPLOYING JENKINS
+          ========================================
+
+    - name: Deploy Jenkins infrastructure
+      shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/{{ item }} -n {{ namespace }}
+      loop:
+        - jenkins/jenkins-pvc.yaml
+        - jenkins/jenkins-deployment.yaml
+        - jenkins/jenkins-service.yaml
+      register: jenkins_deploy
+
+    - name: Wait for Jenkins to be ready
+      shell: |
+        echo "Waiting for Jenkins to be ready..."
+        kubectl wait --for=condition=available --timeout={{ timeout }} deployment/jenkins -n {{ namespace }}
+        echo "OK! Jenkins is ready"
+      register: jenkins_ready
+
+    - name: Display Jenkins status
+      debug:
+        msg: |
+          JENKINS STATUS:
+          Deployment: {% for item in jenkins_deploy.results %}{{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}{% endfor %}
+          Ready: {{ jenkins_ready.stdout }}
+
+    # Step 9: Deploy MailHog
+    - name: Step 9 - Deploy MailHog
+      debug:
+        msg: |
+          ========================================
+          STEP 9: DEPLOYING MAILHOG
+          ========================================
+
+    - name: Deploy MailHog infrastructure
+      shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/{{ item }} -n {{ namespace }}
+      loop:
+        - mailhog/mailhog-deployment.yaml
+        - mailhog/mailhog-service.yaml
+      register: mailhog_deploy
+
+    - name: Wait for MailHog to be ready
+      shell: |
+        echo "Waiting for MailHog to be ready..."
+        kubectl wait --for=condition=available --timeout={{ timeout }} deployment/mailhog -n {{ namespace }}
+        echo "OK! MailHog is ready"
+      register: mailhog_ready
+
+    - name: Display MailHog status
+      debug:
+        msg: |
+          MAILHOG STATUS:
+          Deployment: {% for item in mailhog_deploy.results %}{{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}{% endfor %}
+          Ready: {{ mailhog_ready.stdout }}
+
+    # Step 10: Wait for all pods to be ready
+    - name: Step 10 - Wait for all pods to be ready
+      debug:
+        msg: |
+          ========================================
+          STEP 10: WAITING FOR ALL PODS TO BE READY
+          ========================================
+          Ensuring all deployments are fully ready...
+
+    - name: Wait for all deployments to be ready
+      shell: |
+        echo "Waiting for all deployments to be ready..."
+        
+        # Wait for PostgreSQL
+        echo "Waiting for PostgreSQL..."
+        kubectl wait --for=condition=available --timeout={{ timeout }} deployment/postgres -n {{ namespace }}
+        
+        # Wait for Jenkins
+        echo "Waiting for Jenkins..."
+        kubectl wait --for=condition=available --timeout={{ timeout }} deployment/jenkins -n {{ namespace }}
+        
+        # Wait for MailHog
+        echo "Waiting for MailHog..."
+        kubectl wait --for=condition=available --timeout={{ timeout }} deployment/mailhog -n {{ namespace }}
+        
+        echo "OK! All deployments are ready"
+      register: all_deployments_ready
+
+    - name: Verify all pods are running
+      shell: |
+        echo "Verifying all pods are running..."
+        kubectl get pods -n {{ namespace }} -o wide
+      register: final_pod_verification
+
+    - name: Display final verification
+      debug:
+        msg: |
+          FINAL VERIFICATION:
+          All deployments ready: {{ all_deployments_ready.stdout }}
+          
+          POD STATUS:
+          {{ final_pod_verification.stdout }}
+
+    # Step 11: Setup Port Forwarding
+    - name: Step 11 - Setup Port Forwarding
+      debug:
+        msg: |
+          ========================================
+          STEP 11: SETTING UP PORT FORWARDING
+          ========================================
+          Starting port-forwarding for all services...
+
+    - name: Setup robust port forwarding with indefinite wait
+      shell: |
+        echo "========================================"
+        echo "STARTING PORT FORWARDING SCRIPT"
+        echo "========================================"
+        echo "Calling external port forwarding script..."
+        
+        # Run the port forwarding script
+        {{ project_root }}/start-port-forwards.sh
+      register: port_forward_setup
+      failed_when: false
+
+    - name: Display port forwarding status
+      debug:
+        msg: |
+          PORT FORWARDING STATUS:
+          {{ port_forward_setup.stdout }}
+
+    # Step 12: Display completion
+    - name: Step 12 - Display completion
+      debug:
+        msg: |
+          ========================================
+          DEPLOYMENT COMPLETE!
+          ========================================
+          All services are up and running.
+          
+          ========================================
+          ACCESS URLs
+          ========================================
+          Jenkins: http://localhost:8082
+          MailHog: http://localhost:8025
+          PostgreSQL: Running in cluster
+          
+          ========================================
+          USEFUL COMMANDS
+          ========================================
+          - Check status: kubectl get all -n {{ namespace }}
+          - View logs: kubectl logs -n {{ namespace }} <pod-name>
+          - Stop forwarding: pkill -f 'kubectl port-forward'
+          
+          ========================================
+          JENKINS HOME DATA
+          ========================================
+          Jenkins home data is preserved in: {{ jenkins_home_path }}
+          ========================================
+    # Step 13: Start application monitor and port-forwarder
+    - name: Step 13 - Start application monitor and port-forwarder
+      debug:
+        msg: |
+          ========================================
+          STEP 13: STARTING APPLICATION MONITOR
+          ========================================
+          Launching Python script to wait for and port-forward
+          the backend and frontend applications once they are
+          deployed by Jenkins.
+          
+          You can monitor its progress with:
+          tail -f /tmp/app_monitor.log
+          ========================================
+
+    - name: Ensure Python kubernetes client is installed
+      shell: pip install kubernetes --user
+      register: pip_install
+      changed_when: false
+      failed_when: pip_install.rc != 0 and "already satisfied" not in pip_install.stderr and "already satisfied" not in pip_install.stdout
+
+    - name: Launch the application monitor script in the background
+      shell: "nohup python3 {{ project_root }}/monitor_and_forward.py > /tmp/app_monitor.log 2>&1 &"
+      args:
+        chdir: "{{ project_root }}"
+

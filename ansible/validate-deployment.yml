@@ -1,0 +1,216 @@
+---
+# Validation playbook for DevOps Pets deployment
+# This playbook checks if all required files and configurations are in place
+
+- name: Validate DevOps Pets Deployment
+  hosts: localhost
+  gather_facts: no
+  become: no
+  vars:
+    project_root: "{{ playbook_dir }}/.."
+  
+  tasks:
+    - name: Display validation header
+      debug:
+        msg: |
+          ========================================
+          VALIDATION SUMMARY
+          ========================================
+          Checking project structure and files...
+
+    - name: Check ansible directory
+      stat:
+        path: "{{ project_root }}/ansible"
+      register: ansible_check
+
+    - name: Check k8s directory
+      stat:
+        path: "{{ project_root }}/k8s"
+      register: k8s_check
+
+    - name: Check frontend directory
+      stat:
+        path: "{{ project_root }}/frontend"
+      register: frontend_check
+
+    - name: Check Ask directory
+      stat:
+        path: "{{ project_root }}/Ask"
+      register: Ask_check
+
+    - name: Check k8s postgres directory
+      stat:
+        path: "{{ project_root }}/k8s/postgres"
+      register: postgres_dir_check
+
+    - name: Check k8s jenkins directory
+      stat:
+        path: "{{ project_root }}/k8s/jenkins"
+      register: jenkins_dir_check
+
+    - name: Check k8s mailhog directory
+      stat:
+        path: "{{ project_root }}/k8s/mailhog"
+      register: mailhog_dir_check
+
+    - name: Check jenkins_home directory
+      stat:
+        path: "{{ project_root }}/jenkins_home"
+      register: jenkins_home_check
+
+    - name: Display directory structure
+      debug:
+        msg: |
+          DIRECTORY STRUCTURE:
+          ansible: {{ 'OK!' if ansible_check.stat.exists else 'ERR!' }}
+          k8s: {{ 'OK!' if k8s_check.stat.exists else 'ERR!' }}
+          k8s/postgres: {{ 'OK!' if postgres_dir_check.stat.exists else 'ERR!' }}
+          k8s/jenkins: {{ 'OK!' if jenkins_dir_check.stat.exists else 'ERR!' }}
+          k8s/mailhog: {{ 'OK!' if mailhog_dir_check.stat.exists else 'ERR!' }}
+          jenkins_home: {{ 'OK!' if jenkins_home_check.stat.exists else 'ERR!' }}
+          frontend: {{ 'OK!' if frontend_check.stat.exists else 'ERR!' }}
+          Ask: {{ 'OK!' if Ask_check.stat.exists else 'ERR!' }}
+
+    - name: Check postgres-deployment.yaml
+      stat:
+        path: "{{ project_root }}/k8s/postgres/postgres-deployment.yaml"
+      register: postgres_deployment_check
+
+    - name: Check postgres-service.yaml
+      stat:
+        path: "{{ project_root }}/k8s/postgres/postgres-service.yaml"
+      register: postgres_service_check
+
+    - name: Check postgres-secret.yaml
+      stat:
+        path: "{{ project_root }}/k8s/postgres/postgres-secret.yaml"
+      register: postgres_secret_check
+
+    - name: Check postgres-pvc.yaml
+      stat:
+        path: "{{ project_root }}/k8s/postgres/postgres-pvc.yaml"
+      register: postgres_pvc_check
+
+    - name: Check jenkins-deployment.yaml
+      stat:
+        path: "{{ project_root }}/k8s/jenkins/jenkins-deployment.yaml"
+      register: jenkins_deployment_check
+
+    - name: Check jenkins-service.yaml
+      stat:
+        path: "{{ project_root }}/k8s/jenkins/jenkins-service.yaml"
+      register: jenkins_service_check
+
+    - name: Check jenkins-admin-rbac.yaml
+      stat:
+        path: "{{ project_root }}/k8s/jenkins/jenkins-admin-rbac.yaml"
+      register: jenkins_admin_rbac_check
+
+    - name: Check mailhog-deployment.yaml
+      stat:
+        path: "{{ project_root }}/k8s/mailhog/mailhog-deployment.yaml"
+      register: mailhog_deployment_check
+
+    - name: Check mailhog-service.yaml
+      stat:
+        path: "{{ project_root }}/k8s/mailhog/mailhog-service.yaml"
+      register: mailhog_service_check
+
+    - name: Check postgres Dockerfile
+      stat:
+        path: "{{ project_root }}/k8s/postgres/Dockerfile"
+      register: postgres_dockerfile_check
+
+    - name: Check jenkins Dockerfile
+      stat:
+        path: "{{ project_root }}/k8s/jenkins/Dockerfile"
+      register: jenkins_dockerfile_check
+
+    - name: Check kind-config.yaml
+      stat:
+        path: "{{ project_root }}/kind-config.yaml"
+      register: kind_config_check
+
+    - name: Check deploy-all.yml
+      stat:
+        path: "{{ project_root }}/ansible/deploy-all.yml"
+      register: deploy_all_check
+
+    - name: Display Kubernetes manifests
+      debug:
+        msg: |
+          KUBERNETES MANIFESTS:
+          postgres-deployment.yaml: {{ 'OK!' if postgres_deployment_check.stat.exists else 'ERR!' }}
+          postgres-service.yaml: {{ 'OK!' if postgres_service_check.stat.exists else 'ERR!' }}
+          postgres-secret.yaml: {{ 'OK!' if postgres_secret_check.stat.exists else 'ERR!' }}
+          postgres-pvc.yaml: {{ 'OK!' if postgres_pvc_check.stat.exists else 'ERR!' }}
+          jenkins-deployment.yaml: {{ 'OK!' if jenkins_deployment_check.stat.exists else 'ERR!' }}
+          jenkins-service.yaml: {{ 'OK!' if jenkins_service_check.stat.exists else 'ERR!' }}
+          jenkins-admin-rbac.yaml: {{ 'OK!' if jenkins_admin_rbac_check.stat.exists else 'ERR!' }}
+          mailhog-deployment.yaml: {{ 'OK!' if mailhog_deployment_check.stat.exists else 'ERR!' }}
+          mailhog-service.yaml: {{ 'OK!' if mailhog_service_check.stat.exists else 'ERR!' }}
+
+    - name: Display Dockerfiles
+      debug:
+        msg: |
+          DOCKERFILES:
+          postgres/Dockerfile: {{ 'OK!' if postgres_dockerfile_check.stat.exists else 'ERR!' }}
+          jenkins/Dockerfile: {{ 'OK!' if jenkins_dockerfile_check.stat.exists else 'ERR!' }}
+
+    - name: Display configuration files
+      debug:
+        msg: |
+          CONFIGURATION FILES:
+          kind-config.yaml: {{ 'OK!' if kind_config_check.stat.exists else 'ERR!' }}
+          ansible/deploy-all.yml: {{ 'OK!' if deploy_all_check.stat.exists else 'ERR!' }}
+
+    - name: Check for critical missing files
+      fail:
+        msg: |
+          CRITICAL FILES MISSING:
+          {% if not ansible_check.stat.exists %}
+          - ansible
+          {% endif %}
+          {% if not k8s_check.stat.exists %}
+          - k8s
+          {% endif %}
+          {% if not frontend_check.stat.exists %}
+          - frontend
+          {% endif %}
+          {% if not Ask_check.stat.exists %}
+          - Ask
+          {% endif %}
+          {% if not postgres_deployment_check.stat.exists %}
+          - postgres-deployment.yaml
+          {% endif %}
+          {% if not jenkins_deployment_check.stat.exists %}
+          - jenkins-deployment.yaml
+          {% endif %}
+          {% if not mailhog_deployment_check.stat.exists %}
+          - mailhog-deployment.yaml
+          {% endif %}
+          {% if not kind_config_check.stat.exists %}
+          - kind-config.yaml
+          {% endif %}
+          {% if not deploy_all_check.stat.exists %}
+          - deploy-all.yml
+          {% endif %}
+      when: >
+        not ansible_check.stat.exists or
+        not k8s_check.stat.exists or
+        not frontend_check.stat.exists or
+        not Ask_check.stat.exists or
+        not postgres_deployment_check.stat.exists or
+        not jenkins_deployment_check.stat.exists or
+        not mailhog_deployment_check.stat.exists or
+        not kind_config_check.stat.exists or
+        not deploy_all_check.stat.exists
+
+    - name: Display validation success
+      debug:
+        msg: |
+          ========================================
+          VALIDATION COMPLETED SUCCESSFULLY!
+          ========================================
+          All required files and directories are present.
+          Project structure is valid for deployment. 

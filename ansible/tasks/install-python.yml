@@ -1,0 +1,34 @@
+---
+- name: Check if Python 3 is installed
+  shell: python3 --version
+  register: python3_check
+  failed_when: false
+
+- name: Install Python 3 if not present
+  apt:
+    name: python3
+    state: present
+    update_cache: yes
+  become: yes
+  when: python3_check.rc != 0
+  ignore_errors: yes
+
+- name: Check if pip is installed
+  shell: pip --version
+  register: pip_check
+  failed_when: false
+
+- name: Install pip if not present
+  apt:
+    name: python3-pip
+    state: present
+    update_cache: yes
+  become: yes
+  when: pip_check.rc != 0
+  ignore_errors: yes
+
+- name: Display Python installation status
+  debug:
+    msg: |
+      Python 3: {{ 'OK! Installed' if python3_check.rc == 0 else 'Installation attempted' }}
+      pip: {{ 'OK! Installed' if pip_check.rc == 0 else 'Installation attempted' }} 

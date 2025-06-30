@@ -1,0 +1,15 @@
+---
+- name: Deploy MailHog
+  shell: kubectl apply -f {{ project_root }}/k8s/{{ item }} -n {{ namespace }}
+  loop:
+    - mailhog/mailhog-deployment.yaml
+    - mailhog/mailhog-service.yaml
+  register: mailhog_deploy
+
+- name: Display MailHog deployment status
+  debug:
+    msg: |
+      MailHog deployment status:
+      {% for item in mailhog_deploy.results %}
+      {{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}
+      {% endfor %} 

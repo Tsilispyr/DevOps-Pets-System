@@ -1,0 +1,66 @@
+---
+- name: Check if Docker is already installed
+  shell: |
+    docker --version
+  register: docker_check
+  failed_when: false
+
+- name: Install Docker dependencies
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
+  when: docker_check.rc != 0
+  failed_when: false
+
+- name: Add Docker GPG key
+  shell: |
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  when: docker_check.rc != 0
+  failed_when: false
+
+- name: Add Docker repository
+  shell: |
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  when: docker_check.rc != 0
+  failed_when: false
+
+- name: Install Docker
+  apt:
+    name: docker-ce
+    state: present
+    update_cache: yes
+  when: docker_check.rc != 0
+  failed_when: false
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  when: docker_check.rc != 0
+  failed_when: false
+
+- name: Get current user
+  shell: whoami
+  register: current_user
+  when: docker_check.rc != 0
+
+- name: Add user to docker group
+  user:
+    name: "{{ current_user.stdout }}"
+    groups: docker
+    append: yes
+  when: docker_check.rc != 0
+  failed_when: false
+
+- name: Verify Docker installation
+  shell: |
+    docker --version
+  register: docker_verify
+  failed_when: false 

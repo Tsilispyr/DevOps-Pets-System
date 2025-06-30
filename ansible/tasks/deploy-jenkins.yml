@@ -1,0 +1,15 @@
+---
+- name: Deploy Jenkins
+  shell: kubectl apply -f {{ project_root }}/k8s/{{ item }} -n {{ namespace }}
+  loop:
+    - jenkins/jenkins-deployment.yaml
+    - jenkins/jenkins-service.yaml
+  register: jenkins_deploy
+
+- name: Display Jenkins deployment status
+  debug:
+    msg: |
+      Jenkins deployment status:
+      {% for item in jenkins_deploy.results %}
+      {{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}
+      {% endfor %} 

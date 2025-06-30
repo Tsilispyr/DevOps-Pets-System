@@ -1,0 +1,33 @@
+---
+- name: Check if Kind cluster exists
+  shell: kind get clusters | grep -q {{ cluster_name }} && echo "EXISTS" || echo "NOT_FOUND"
+  register: cluster_exists_check
+  failed_when: false
+
+- name: Create new Kind cluster
+  shell: |
+    kind create cluster --name {{ cluster_name }} --config {{ project_root }}/kind-config.yaml
+    echo "OK! Created new Kind cluster"
+  register: cluster_create
+
+- name: Display cluster creation status
+  debug:
+    msg: |
+      Cluster creation status:
+      {{ cluster_create.stdout }}
+
+- name: Export kubeconfig
+  shell: kind export kubeconfig --name {{ cluster_name }}
+  register: kubeconfig_export
+
+- name: Verify cluster is ready
+  shell: kubectl cluster-info
+  register: cluster_info
+
+- name: Display cluster info
+  debug:
+    msg: |
+      Cluster Information:
+      - name: {{ cluster_name }}
+      - API Server: {{ cluster_info.stdout }}
+      - Kubeconfig: Exported to current directory 

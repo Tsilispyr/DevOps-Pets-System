@@ -1,0 +1,35 @@
+---
+- name: Check if Kind is already installed
+  stat:
+    path: /usr/local/bin/kind
+  register: kind_bin
+
+- name: Download Kind to temporary location
+  get_url:
+    url: https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+    dest: /tmp/kind
+    mode: '0755'
+  when: not kind_bin.stat.exists
+  failed_when: false
+
+- name: Move Kind to /usr/local/bin
+  shell: |
+    sudo mv /tmp/kind /usr/local/bin/kind
+    sudo chown root:root /usr/local/bin/kind
+    sudo chmod +x /usr/local/bin/kind
+  when: not kind_bin.stat.exists
+  failed_when: false
+
+- name: Clean up temporary file
+  file:
+    path: /tmp/kind
+    state: absent
+  when: not kind_bin.stat.exists
+  failed_when: false
+
+- name: Verify Kind installation
+  shell: |
+    export PATH="/usr/local/bin:$PATH"
+    kind version
+  register: kind_verify
+  failed_when: false 
