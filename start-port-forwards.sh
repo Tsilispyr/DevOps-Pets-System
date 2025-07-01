@@ -86,8 +86,8 @@ SERVICES=(
   "mailhog mailhog 8025 8025"
   "minio minio 9000 9000"
   "minio-console minio 9001 9001"
-  "backend backend 8081 8080"
-  "frontend frontend 8080 80"
+  "backend backend 8080 8080"
+  "frontend frontend 8081 80"
   # Ingress placeholder: Uncomment and adjust when Ingress is ready
   # "ingress-nginx ingress-nginx-controller 8888 80"
 )
