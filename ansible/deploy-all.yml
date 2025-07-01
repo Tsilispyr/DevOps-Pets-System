@@ -248,6 +248,20 @@
       shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/jenkins/jenkins-admin-rbac.yaml
       register: jenkins_rbac_apply
 
+    - name: Apply Gmail secret for email service
+      shell: |
+        kubectl create secret generic gmail-secret \
+          --from-literal=GMAIL_USER=petsystem46@gmail.com \
+          --from-literal=GMAIL_PASS=aopgqefkqyujxhuy \
+          -n {{ namespace }} \
+          --dry-run=client -o yaml | kubectl apply -f -
+      register: gmail_secret_apply
+
+    - name: Display Gmail secret status
+      debug:
+        msg: |
+          Gmail secret: {{ 'OK! Applied' if gmail_secret_apply.rc == 0 else 'ERR! Failed' }}
+
     - name: Display base config status
       debug:
         msg: |
