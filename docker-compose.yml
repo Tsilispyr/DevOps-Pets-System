@@ -2,86 +2,61 @@ version: '3.8'
 
 services:
   jenkins:
-    build:
-      context: .
-      dockerfile: jenkins-dockerfile
-    container_name: devops-pets-jenkins
-    restart: unless-stopped
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    user: root
     ports:
       - "8082:8080"
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
     environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false
     networks:
       - devops-pets-network
 
   postgres:
-    build:
-      context: ./k8s/postgres
-      dockerfile: Dockerfile
-    container_name: devops-pets-postgres
-    restart: unless-stopped
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: petdb
+      POSTGRES_USER: petuser
+      POSTGRES_PASSWORD: petpass
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_DB=devops_pets
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
     networks:
       - devops-pets-network
 
   mailhog:
-    build:
-      context: ./k8s/mailhog
-      dockerfile: Dockerfile
-    container_name: devops-pets-mailhog
-    restart: unless-stopped
+    image: mailhog/mailhog
+    container_name: mailhog
     ports:
       - "8025:8025"
       - "1025:1025"
     networks:
       - devops-pets-network
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: devops-pets-frontend
-    restart: unless-stopped
-    ports:
-      - "8081:80"
-    depends_on:
-      - backend
-    networks:
-      - devops-pets-network
-
-  backend:
-    build:
-      context: ./Ask
-      dockerfile: Dockerfile
-    container_name: devops-pets-backend
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
+  minio:
+    image: minio/minio:latest
+    container_name: minio
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/devops_pets
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
-    depends_on:
-      - postgres
-    networks:
-      - devops-pets-network
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
 
 volumes:
-  jenkins_home:
-    driver: local
-  postgres_data:
-    driver: local
+  db-data: {}
+  jenkins_home: {}
+  minio-data: {}
 
 networks:
   devops-pets-network:

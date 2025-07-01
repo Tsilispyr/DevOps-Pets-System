@@ -37,6 +37,13 @@ MINIO_CONSOLE_PID=$!
 echo $MINIO_CONSOLE_PID > /tmp/minio-console-port-forward.pid
 echo "OK! MinIO Console port forward is running (PID: $MINIO_CONSOLE_PID)"
 
+# Start Postgres port forward in background
+echo "Starting Postgres port forward (5432:5432)..."
+kubectl port-forward -n devops-pets service/postgres 5432:5432 > /tmp/postgres-port-forward.log 2>&1 &
+POSTGRES_PID=$!
+echo $POSTGRES_PID > /tmp/postgres-port-forward.pid
+echo "OK! Postgres port forward is running (PID: $POSTGRES_PID)"
+
 # Wait for port forwards to establish
 echo "Waiting for port forwards to establish..."
 sleep 5
@@ -66,6 +73,12 @@ else
   echo "ERR! MinIO Console port forward failed to start"
 fi
 
+if kill -0 $POSTGRES_PID 2>/dev/null; then
+  echo "OK! Postgres port forward is running"
+else
+  echo "ERR! Postgres port forward failed to start"
+fi
+
 echo "========================================"
 echo "PORT FORWARDING SETUP COMPLETED!"
 echo "========================================"
@@ -73,6 +86,7 @@ echo "Jenkins: http://localhost:8082"
 echo "MailHog: http://localhost:8025"
 echo "MinIO API: http://localhost:9000"
 echo "MinIO Console: http://localhost:9001"
+echo "Postgres: http://localhost:5432"
 echo ""
 echo "Port forwards are running in background."
 echo "Press Ctrl+C to stop."
@@ -88,6 +102,7 @@ SERVICES=(
   "minio-console minio 9001 9001"
   "backend backend 8080 8080"
   "frontend frontend 8081 80"
+  "postgres postgres 5432 5432"
   # Ingress placeholder: Uncomment and adjust when Ingress is ready
   # "ingress-nginx ingress-nginx-controller 8888 80"
 )
