@@ -8,7 +8,22 @@ echo "========================================"
 pkill -f "kubectl port-forward.*jenkins" || true
 pkill -f "kubectl port-forward.*mailhog" || true
 pkill -f "kubectl port-forward.*minio" || true
+pkill -f "kubectl port-forward.*frontend" || true
+pkill -f "kubectl port-forward.*backend" || true
+pkill -f "kubectl port-forward.*postgres" || true
+pkill -f "kubectl port-forward.*ingress-nginx" || true
 sleep 2
+
+# Start Ingress-NGINX port forward in background
+if kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller 2>/dev/null | grep -q 'Running'; then
+  echo "Starting Ingress-NGINX port forward (8888:80)..."
+  kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8888:80 > /tmp/ingress-nginx-port-forward.log 2>&1 &
+  INGRESS_NGINX_PID=$!
+  echo $INGRESS_NGINX_PID > /tmp/ingress-nginx-port-forward.pid
+  echo "OK! Ingress-NGINX port forward is running (PID: $INGRESS_NGINX_PID)"
+else
+  echo "ERR! Ingress-NGINX pod not running, will retry in loop..."
+fi
 
 # Start Jenkins port forward in background
 echo "Starting Jenkins port forward (8082:8080)..."
@@ -63,6 +78,12 @@ echo "Waiting for port forwards to establish..."
 sleep 5
 
 # Check if port forwards are running
+if kill -0 $INGRESS_NGINX_PID 2>/dev/null; then
+  echo "OK! Ingress-NGINX port forward is running"
+else
+  echo "ERR! Ingress-NGINX port forward failed to start"
+fi
+
 if kill -0 $JENKINS_PID 2>/dev/null; then
   echo "OK! Jenkins port forward is running"
 else
@@ -115,6 +136,7 @@ echo "MinIO Console: http://localhost:9001"
 echo "Postgres: http://localhost:5432"
 echo "Frontend: http://localhost:8081"
 echo "Backend API: http://localhost:8080"
+echo "Ingress-NGINX: http://localhost:8888"
 echo ""
 echo "Port forwards are running in background."
 echo "Press Ctrl+C to stop."
@@ -122,17 +144,15 @@ echo "========================================"
 
 # === BEGIN: Infinite port-forward check for all services ===
 
-# Service definitions: label, service name, local port, target port
 SERVICES=(
   "jenkins jenkins 8082 8080"
   "mailhog mailhog 8025 8025"
-  "minio minio 9000 9000"
+  "minio-api minio 9000 9000"
   "minio-console minio 9001 9001"
   "backend backend 8080 8080"
   "frontend frontend 8081 80"
   "postgres postgres 5432 5432"
-  # Ingress placeholder: Uncomment and adjust when Ingress is ready
-  # "ingress-nginx ingress-nginx-controller 8888 80"
+  "ingress-nginx ingress-nginx-controller 8888 80"
 )
 
 is_pod_running() {
@@ -145,37 +165,64 @@ is_port_forward_active() {
   lsof -iTCP:$port -sTCP:LISTEN -P 2>/dev/null | grep -q LISTEN
 }
 
-(
-  while true; do
-    for entry in "${SERVICES[@]}"; do
-      set -- $entry
-      label=$1
-      svc=$2
-      local_port=$3
-      target_port=$4
-      # Special handling for minio-console (uses same service as minio)
-      if [ "$label" = "minio-console" ]; then
-        svc="minio"
-      fi
-      # Ingress placeholder logic
-      if [ "$label" = "ingress-nginx" ]; then
-        echo "[INFO] Ingress logic placeholder: implement when Ingress is ready."
-        continue
-      fi
-      if is_pod_running $label; then
+while true; do
+  # Check for Jenkins signal (ConfigMap)
+  if kubectl get configmap -n devops-pets -l build-complete=true | grep build-complete; then
+    echo "[INFO] Jenkins build-complete signal detected. Resetting signal."
+    kubectl delete configmap -n devops-pets -l build-complete=true
+  fi
+
+  # Check and start port-forwards for all services
+  for entry in "${SERVICES[@]}"; do
+    set -- $entry
+    label=$1
+    svc=$2
+    local_port=$3
+    target_port=$4
+    namespace="devops-pets"
+    if [ "$label" = "minio-console" ] || [ "$label" = "minio-api" ]; then
+      pod_selector="app=minio"
+    else
+      pod_selector="app=$label"
+    fi
+    if [ "$label" = "ingress-nginx" ]; then
+      namespace="ingress-nginx"
+      pod_selector="app.kubernetes.io/component=controller"
+      pods_output=$(kubectl get pods -n $namespace -l $pod_selector 2>/dev/null)
+      if echo "$pods_output" | grep -q 'Running'; then
         if ! is_port_forward_active $local_port; then
-          echo "Starting $label port forward ($local_port:$target_port)..."
-          kubectl port-forward -n devops-pets service/$svc $local_port:$target_port > /tmp/${label}-port-forward.log 2>&1 &
+          echo "Starting ingress-nginx port forward ($local_port:$target_port)..."
+          kubectl port-forward -n $namespace service/$svc $local_port:$target_port > /tmp/${label}-port-forward.log 2>&1 &
           echo $! > /tmp/${label}-port-forward.pid
-          echo "OK! $label port forward is running (PID: $(cat /tmp/${label}-port-forward.pid))"
+          echo "OK! ingress-nginx port forward is running (PID: $(cat /tmp/${label}-port-forward.pid))"
         fi
       else
-        echo "$label pod not running, will retry..."
+        if [ -z "$pods_output" ]; then
+          echo "ingress-nginx pod (service: $svc) not found in namespace $namespace, will retry..."
+        else
+          echo "ingress-nginx pod(s) not running in $namespace: $pods_output"
+        fi
       fi
-    done
-    sleep 10
+      continue
+    fi
+    pods_output=$(kubectl get pods -n $namespace -l $pod_selector 2>/dev/null)
+    if echo "$pods_output" | grep -q 'Running'; then
+      if ! is_port_forward_active $local_port; then
+        echo "Starting $label port forward ($local_port:$target_port)..."
+        kubectl port-forward -n $namespace service/$svc $local_port:$target_port > /tmp/${label}-port-forward.log 2>&1 &
+        echo $! > /tmp/${label}-port-forward.pid
+        echo "OK! $label port forward is running (PID: $(cat /tmp/${label}-port-forward.pid))"
+      fi
+    else
+      if [ -z "$pods_output" ]; then
+        echo "$label pod (service: $svc) not found in namespace $namespace, will retry..."
+      else
+        echo "$label pod(s) not running in $namespace: $pods_output"
+      fi
+    fi
   done
-) &
+  sleep 10
+done
 # === END: Infinite port-forward check for all services ===
 
   echo "DEBUG: Script is about to exit"
