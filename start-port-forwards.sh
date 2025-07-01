@@ -44,6 +44,20 @@ POSTGRES_PID=$!
 echo $POSTGRES_PID > /tmp/postgres-port-forward.pid
 echo "OK! Postgres port forward is running (PID: $POSTGRES_PID)"
 
+# Start Backend port forward in background
+echo "Starting Backend port forward (8080:8080)..."
+kubectl port-forward -n devops-pets service/backend 8080:8080 > /tmp/backend-port-forward.log 2>&1 &
+BACKEND_PID=$!
+echo $BACKEND_PID > /tmp/backend-port-forward.pid
+echo "OK! Backend port forward is running (PID: $BACKEND_PID)"
+
+# Start Frontend port forward in background
+echo "Starting Frontend port forward (8081:80)..."
+kubectl port-forward -n devops-pets service/frontend 8081:80 > /tmp/frontend-port-forward.log 2>&1 &
+FRONTEND_PID=$!
+echo $FRONTEND_PID > /tmp/frontend-port-forward.pid
+echo "OK! Frontend port forward is running (PID: $FRONTEND_PID)"
+
 # Wait for port forwards to establish
 echo "Waiting for port forwards to establish..."
 sleep 5
@@ -79,6 +93,18 @@ else
   echo "ERR! Postgres port forward failed to start"
 fi
 
+if kill -0 $BACKEND_PID 2>/dev/null; then
+  echo "OK! Backend port forward is running"
+else
+  echo "ERR! Backend port forward failed to start"
+fi
+
+if kill -0 $FRONTEND_PID 2>/dev/null; then
+  echo "OK! Frontend port forward is running"
+else
+  echo "ERR! Frontend port forward failed to start"
+fi
+
 echo "========================================"
 echo "PORT FORWARDING SETUP COMPLETED!"
 echo "========================================"
@@ -87,6 +113,8 @@ echo "MailHog: http://localhost:8025"
 echo "MinIO API: http://localhost:9000"
 echo "MinIO Console: http://localhost:9001"
 echo "Postgres: http://localhost:5432"
+echo "Frontend: http://localhost:8081"
+echo "Backend API: http://localhost:8080"
 echo ""
 echo "Port forwards are running in background."
 echo "Press Ctrl+C to stop."
