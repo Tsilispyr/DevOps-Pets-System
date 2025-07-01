@@ -172,6 +172,38 @@
           - API Server: {{ cluster_info.stdout }}
           - Kubeconfig: Exported to current directory
 
+    # Step 3.5: Deploy nginx-ingress controller
+    - name: Step 3.5 - Deploy nginx-ingress controller
+      debug:
+        msg: |
+          ========================================
+          STEP 3.5: DEPLOYING NGINX-INGRESS CONTROLLER
+          ========================================
+          Applying official nginx-ingress manifest...
+
+    - name: Deploy nginx-ingress controller
+      shell: |
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+      register: nginx_ingress_apply
+      failed_when: false
+
+    - name: Wait for nginx-ingress controller to be ready
+      shell: |
+        echo "Waiting for nginx-ingress controller to be ready..."
+        kubectl wait --namespace ingress-nginx \
+          --for=condition=ready pod \
+          --selector=app.kubernetes.io/component=controller \
+          --timeout=180s
+      register: nginx_ingress_ready
+      failed_when: false
+
+    - name: Display nginx-ingress status
+      debug:
+        msg: |
+          NGINX-INGRESS STATUS:
+          Apply: {{ 'OK! Applied' if nginx_ingress_apply.rc == 0 else 'ERR! Failed' }}
+          Ready: {{ nginx_ingress_ready.stdout }}
+
     # Step 4: Create namespace
     - name: Step 4 - Create namespace
       debug:

@@ -78,11 +78,61 @@ echo "Port forwards are running in background."
 echo "Press Ctrl+C to stop."
 echo "========================================"
 
-# # Keep the main process alive and wait for Ctrl+C
-# echo "Waiting indefinitely... (Press Ctrl+C to stop)"
-# while true; do
-#   sleep 30
-#   echo "Port forwarding still active... (Press Ctrl+C to stop)"
-# done 
+# === BEGIN: Infinite port-forward check for all services ===
+
+# Service definitions: label, service name, local port, target port
+SERVICES=(
+  "jenkins jenkins 8082 8080"
+  "mailhog mailhog 8025 8025"
+  "minio minio 9000 9000"
+  "minio-console minio 9001 9001"
+  "backend backend 8081 8080"
+  "frontend frontend 8080 80"
+  # Ingress placeholder: Uncomment and adjust when Ingress is ready
+  # "ingress-nginx ingress-nginx-controller 8888 80"
+)
+
+is_pod_running() {
+  local label=$1
+  kubectl get pods -n devops-pets -l app=$label 2>/dev/null | grep -q 'Running'
+}
+
+is_port_forward_active() {
+  local port=$1
+  lsof -iTCP:$port -sTCP:LISTEN -P 2>/dev/null | grep -q LISTEN
+}
+
+(
+  while true; do
+    for entry in "${SERVICES[@]}"; do
+      set -- $entry
+      label=$1
+      svc=$2
+      local_port=$3
+      target_port=$4
+      # Special handling for minio-console (uses same service as minio)
+      if [ "$label" = "minio-console" ]; then
+        svc="minio"
+      fi
+      # Ingress placeholder logic
+      if [ "$label" = "ingress-nginx" ]; then
+        echo "[INFO] Ingress logic placeholder: implement when Ingress is ready."
+        continue
+      fi
+      if is_pod_running $label; then
+        if ! is_port_forward_active $local_port; then
+          echo "Starting $label port forward ($local_port:$target_port)..."
+          kubectl port-forward -n devops-pets service/$svc $local_port:$target_port > /tmp/${label}-port-forward.log 2>&1 &
+          echo $! > /tmp/${label}-port-forward.pid
+          echo "OK! $label port forward is running (PID: $(cat /tmp/${label}-port-forward.pid))"
+        fi
+      else
+        echo "$label pod not running, will retry..."
+      fi
+    done
+    sleep 10
+  done
+) &
+# === END: Infinite port-forward check for all services ===
 
   echo "DEBUG: Script is about to exit"
