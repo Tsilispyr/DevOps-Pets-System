@@ -14,8 +14,8 @@
 
 # --- Configuration ---
 NAMESPACE="devops-pets"
-APPS=("backend" "frontend" "minio")
-declare -A PORTS=( ["backend"]="8080:8080" ["frontend"]="8081:80" ["minio"]="9000:9000" )
+APPS=("backend" "frontend" "minio" "minio-console")
+declare -A PORTS=( ["backend"]="8080:8080" ["frontend"]="8081:80" ["minio"]="9000:9000" ["minio-console"]="9001:9001" )
 declare -A URLS=( ["backend"]="http://backend:8080/actuator/health" ["frontend"]="http://frontend:80" ["minio"]="http://minio:9000" )
 declare -A PIDS # Associative array to hold PIDs of port-forward processes
 
@@ -54,44 +54,23 @@ start_or_refresh_forward() {
     fi
     log "Deployment for '${app_name}' is available."
 
-    # 2. Wait for the application to be responsive by checking if the TCP port is open
-    local port
-    port=$(echo "${PORTS[$app_name]}" | cut -d: -f2) # Extract pod port from "local:pod"
-    log "Checking if '${app_name}' is listening on TCP port ${port}..."
+    # 2. Find the running pod and start port-forward directly
+    log "Finding running pod for '${app_name}'..."
+    
+    # Find the running pod to forward to
+    local pod_name
+    pod_name=$(kubectl get pods -n "$NAMESPACE" --field-selector=status.phase=Running --no-headers -o custom-columns=NAME:.metadata.name | grep "^${app_name}-" | head -n 1)
+    
+    if [ -z "$pod_name" ]; then
+        log_error "Could not find a running pod for '${app_name}' to port-forward."
+        return 1
+    fi
 
-    for i in {1..30}; do
-        # Ensure any leftover check pod is gone before creating a new one.
-        kubectl delete pod "tmp-check-${app_name}" -n "$NAMESPACE" --ignore-not-found=true --now --wait=false >/dev/null 2>&1
-        
-        # Use the shell's built-in /dev/tcp device for the most robust check.
-        # This avoids dependencies on binaries like 'nc' and is not affected by HTTP errors.
-        if kubectl run "tmp-check-${app_name}" --image=busybox:latest --restart=Never --rm -i --timeout=10s \
-            --namespace="$NAMESPACE" -- /bin/sh -c "exec 3<>/dev/tcp/${app_name}/${port}"; then
-            
-            log "'${app_name}' is listening on port ${port}. Application is considered responsive."
-            
-            # Find the running pod to forward to
-            local pod_name
-            pod_name=$(kubectl get pods -n "$NAMESPACE" --field-selector=status.phase=Running --no-headers -o custom-columns=NAME:.metadata.name | grep "^${app_name}-" | head -n 1)
-            
-            if [ -z "$pod_name" ]; then
-                log_error "Could not find a running pod for '${app_name}' to port-forward."
-                return 1
-            fi
-
-            log "Starting port-forward for pod '${pod_name}' on ports ${PORTS[$app_name]}..."
-            nohup kubectl port-forward -n "$NAMESPACE" "$pod_name" "${PORTS[$app_name]}" > "/tmp/${app_name}-pf.log" 2>&1 &
-            PIDS["$app_name"]=$!
-            log "Successfully started '${app_name}' port-forward with PID ${PIDS[$app_name]}."
-            return 0
-        else
-            log "'${app_name}' is not yet listening on port ${port}. Waiting... ($i/30)"
-            sleep 10
-        fi
-    done
-
-    log_error "Timeout: '${app_name}' did not start listening on port ${port} after 5 minutes."
-    return 1
+    log "Starting port-forward for pod '${pod_name}' on ports ${PORTS[$app_name]}..."
+    nohup kubectl port-forward -n "$NAMESPACE" "$pod_name" "${PORTS[$app_name]}" > "/tmp/${app_name}-pf.log" 2>&1 &
+    PIDS["$app_name"]=$!
+    log "Successfully started '${app_name}' port-forward with PID ${PIDS[$app_name]}."
+    return 0
 }
 
 # --- Main Logic ---
@@ -104,19 +83,26 @@ log "      Hybrid Port-Forward Service Started     "
 log "==================================================="
 log "Monitoring namespace: ${NAMESPACE}"
 
-# 1. FAILSAFE MODE: Initial check on startup
-log "Performing initial check for existing applications (Failsafe Mode)..."
-initial_pods_found=false
-for app in "${APPS[@]}"; do
-    # Check if deployment exists without waiting too long
-    if kubectl get deployment "$app" -n "$NAMESPACE" &> /dev/null; then
-        log "Found existing deployment for '${app}'. Attempting to connect."
-        start_or_refresh_forward "$app"
-        initial_pods_found=true
-    else
-        log "No existing deployment found for '${app}'."
-    fi
-done
+    # 1. FAILSAFE MODE: Initial check on startup
+    log "Performing initial check for existing applications (Failsafe Mode)..."
+    initial_pods_found=false
+    for app in "${APPS[@]}"; do
+        # Check if deployment exists without waiting too long
+        if kubectl get deployment "$app" -n "$NAMESPACE" &> /dev/null; then
+            log "Found existing deployment for '${app}'. Attempting to connect."
+            start_or_refresh_forward "$app"
+            initial_pods_found=true
+        elif [ "$app" = "minio-console" ]; then
+            # Special handling for MinIO Console (no deployment, just service)
+            log "Starting MinIO Console port-forward..."
+            nohup kubectl port-forward -n "$NAMESPACE" service/minio 9001:9001 > "/tmp/minio-console-pf.log" 2>&1 &
+            PIDS["minio-console"]=$!
+            log "Successfully started 'minio-console' port-forward with PID ${PIDS[minio-console]}."
+            initial_pods_found=true
+        else
+            log "No existing deployment found for '${app}'."
+        fi
+    done
 
 if [ "$initial_pods_found" = true ]; then
     log "Initial check complete. Entering continuous monitoring mode."
@@ -129,21 +115,39 @@ while true; do
     log "Waiting for a Jenkins build signal (ConfigMap with label 'build-complete=true')..."
     
     # This loop waits indefinitely for the signal
-    while ! kubectl get configmap -n "$NAMESPACE" -l build-complete=true -o name &> /dev/null; do
+    while true; do
+        jenkins_signal=$(kubectl get configmap -n "$NAMESPACE" -l build-complete=true -o name 2>/dev/null)
+        if [ -n "$jenkins_signal" ]; then
+            break
+        fi
         sleep 15
     done
     
-    local jenkins_signal
-    jenkins_signal=$(kubectl get configmap -n "$NAMESPACE" -l build-complete=true -o name)
     log "New Jenkins build signal detected! Refreshing all applications. (Signal: $jenkins_signal)"
     
     # Refresh all applications based on the new build
     for app in "${APPS[@]}"; do
-        log "Starting port-forward for service '${app}' on ports ${PORTS[$app]}..."
-        stop_forward "$app"
-        nohup kubectl port-forward -n "$NAMESPACE" service/${app} ${PORTS[$app]} > "/tmp/${app}-pf.log" 2>&1 &
-        PIDS["$app"]=$!
-        log "Successfully started '${app}' port-forward with PID ${PIDS[$app]}."
+        if [ "$app" = "minio-console" ]; then
+            # Special handling for MinIO Console (same service, different port)
+            log "Starting port-forward for MinIO Console on ports ${PORTS[$app]}..."
+            stop_forward "$app"
+            nohup kubectl port-forward -n "$NAMESPACE" service/minio ${PORTS[$app]} > "/tmp/${app}-pf.log" 2>&1 &
+            PIDS["$app"]=$!
+            log "Successfully started '${app}' port-forward with PID ${PIDS[$app]}."
+        elif [ "$app" = "minio-console" ] && [ "$1" = "initial" ]; then
+            # For initial mode, start MinIO Console port-forward
+            log "Starting initial MinIO Console port-forward on ports ${PORTS[$app]}..."
+            stop_forward "$app"
+            nohup kubectl port-forward -n "$NAMESPACE" service/minio ${PORTS[$app]} > "/tmp/${app}-pf.log" 2>&1 &
+            PIDS["$app"]=$!
+            log "Successfully started '${app}' port-forward with PID ${PIDS[$app]}."
+        else
+            log "Starting port-forward for service '${app}' on ports ${PORTS[$app]}..."
+            stop_forward "$app"
+            nohup kubectl port-forward -n "$NAMESPACE" service/${app} ${PORTS[$app]} > "/tmp/${app}-pf.log" 2>&1 &
+            PIDS["$app"]=$!
+            log "Successfully started '${app}' port-forward with PID ${PIDS[$app]}."
+        fi
     done
     
     log "Cleaning up Jenkins build signal: $jenkins_signal"
