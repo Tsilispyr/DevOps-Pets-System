@@ -43,15 +43,15 @@
     - name: Wait for port forwarding to stop
       shell: sleep 3
 
-    - name: Force delete namespace completely
-      shell: kubectl delete namespace {{ namespace }} --force --grace-period=0 --ignore-not-found=true || true
-      failed_when: false
-
     - name: Force delete any remaining resources
       shell: |
         kubectl delete all --all -n {{ namespace }} --force --grace-period=0 --ignore-not-found=true || true
         kubectl delete pvc --all -n {{ namespace }} --force --grace-period=0 --ignore-not-found=true || true
         kubectl delete pv --all --force --grace-period=0 --ignore-not-found=true || true
+      failed_when: false
+
+    - name: Force delete namespace completely
+      shell: kubectl delete namespace {{ namespace }} --force --grace-period=0 --ignore-not-found=true || true
       failed_when: false
 
     - name: Wait for namespace deletion
@@ -218,6 +218,7 @@
       register: namespace_create
 
     - name: Display namespace status
+   
       debug:
         msg: |
           NAMESPACE STATUS:
