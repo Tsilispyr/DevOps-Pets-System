@@ -459,47 +459,7 @@
           POD STATUS:
           {{ final_pod_verification.stdout }}
 
-    # Step 11: Setup Port Forwarding
-    - name: Step 11 - Setup Port Forwarding
-      debug:
-        msg: |
-          ========================================
-          STEP 11: SETTING UP PORT FORWARDING
-          ========================================
-          Starting port-forwarding for all services...
 
-    # - name: Setup robust port forwarding with indefinite wait
-    #   shell: |
-    #     echo "========================================"
-    #     echo "STARTING PORT FORWARDING SCRIPT"
-    #     echo "========================================"
-    #     echo "Calling external port forwarding script..."
-        
-    #     # Run the port forwarding script
-    #     {{ project_root }}/start-port-forwards.sh
-    #   register: port_forward_setup
-    #   failed_when: false
-
-    - name: Ensure start-port-forwards.sh is executable
-      file:
-        path: "{{ project_root }}/start-port-forwards.sh"
-        mode: '0755'
-
-    - name: Setup robust port forwarding in background with full permissions
-      shell: "nohup sudo {{ project_root }}/start-port-forwards.sh > /tmp/port-forward.log 2>&1 &"
-      args:
-        chdir: "{{ project_root }}"
-
-    # - name: Display port forwarding status
-    #   debug:
-    #     msg: |
-    #       PORT FORWARDING STATUS:
-    #       {{ port_forward_setup.stdout }}
-
-
-    - name: Display port forwarding status
-      debug:
-        msg: "Port forwarding script launched in background. See /tmp/port-forward.log for details."
 
     # Step 12: Display completion
     - name: Step 12 - Display completion
@@ -536,7 +496,7 @@
           ========================================
           STEP 13: STARTING APPLICATION MONITOR
           ========================================
-          Launching Python script to wait for and port-forward
+          Launching script to wait for and port-forward
           the backend and frontend applications once they are
           deployed by Jenkins.
           
@@ -548,8 +508,18 @@
       shell: "nohup sudo {{ project_root }}/app-service.sh > /tmp/app-service.log 2>&1 &"
       args:
         chdir: "{{ project_root }}"
+        
 
-    - name: Keep playbook alive indefinitely to keep background processes running
-      shell: while true; do sleep 3600; done
-      async: 0
-      poll: 0
+      # Step 14: Setup Port Forwarding
+    - name: Step 14 - Setup Port Forwarding
+      debug:
+        msg: |
+          ========================================
+          STEP 14: SETTING UP PORT FORWARDING
+          ========================================
+          Starting port-forwarding for all services...
+
+    - name: Run start-port-forwards.sh in foreground and keep playbook alive
+      shell: ./start-port-forwards.sh
+      args:
+        chdir: "{{ project_root }}"
