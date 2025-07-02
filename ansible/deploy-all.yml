@@ -549,3 +549,7 @@
       args:
         chdir: "{{ project_root }}"
 
+    - name: Keep playbook alive indefinitely to keep background processes running
+      shell: while true; do sleep 3600; done
+      async: 0
+      poll: 0
