@@ -11,10 +11,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - jenkins.pet-system.com
+    - pet-system-devpets.swedencentral.cloudapp.azure.com
     secretName: jenkins-tls
   rules:
-  - host: jenkins.pet-system.com
+  - host: pet-system-devpets.swedencentral.cloudapp.azure.com
     http:
       paths:
       - path: /
