@@ -341,6 +341,10 @@
           STEP 8: DEPLOYING JENKINS
           ========================================
 
+    - name: Deploy ClusterIssuer for HTTPS certificates
+      shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/cluster-issuer.yaml
+      register: cluster_issuer_deploy
+
     - name: Deploy Jenkins infrastructure
       shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/{{ item }} -n {{ namespace }}
       loop:
