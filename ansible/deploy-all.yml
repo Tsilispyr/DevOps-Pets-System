@@ -180,6 +180,22 @@
       register: ingress_nginx_local_ready
       failed_when: false
 
+    - name: Apply ingress-nginx RBAC for admission webhook
+      shell: |
+        echo "Applying RBAC for ingress-nginx admission webhook..."
+        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-rbac.yaml
+      register: ingress_nginx_rbac_apply
+      failed_when: false
+
+    - name: Wait for ingress-nginx admission jobs to complete
+      shell: |
+        echo "Waiting for ingress-nginx admission jobs to complete..."
+        kubectl wait --for=condition=complete job/ingress-nginx-admission-create -n ingress-nginx --timeout=120s
+        kubectl wait --for=condition=complete job/ingress-nginx-admission-patch -n ingress-nginx --timeout=120s
+        echo "OK! Admission jobs completed successfully"
+      register: ingress_nginx_admission_ready
+      failed_when: false
+
     - name: Export kubeconfig
       shell: kind export kubeconfig --name {{ cluster_name }}
       register: kubeconfig_export
@@ -210,7 +226,9 @@
         msg: |
           INGRESS-NGINX STATUS:
           Apply: {{ 'OK! Applied' if ingress_nginx_local_apply.rc == 0 else 'ERR! Failed' }}
-          Ready: {{ ingress_nginx_local_ready.stdout }}
+          Controller Ready: {{ ingress_nginx_local_ready.stdout }}
+          RBAC Applied: {{ 'OK! Applied' if ingress_nginx_rbac_apply.rc == 0 else 'ERR! Failed' }}
+          Admission Jobs: {{ ingress_nginx_admission_ready.stdout }}
 
     # Step 4: Create namespace
     - name: Step 4 - Create namespace
