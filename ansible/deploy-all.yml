@@ -333,6 +333,25 @@
           Deployment: {% for item in postgres_deploy.results %}{{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}{% endfor %}
           Ready: {{ postgres_ready.stdout }}
 
+    # Step 7.5: Install cert-manager
+    - name: Step 7.5 - Install cert-manager
+      debug:
+        msg: |
+          ========================================
+          STEP 7.5: INSTALLING CERT-MANAGER
+          ========================================
+
+    - name: Install cert-manager
+      shell: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.yaml
+      register: cert_manager_install
+
+    - name: Wait for cert-manager to be ready
+      shell: |
+        echo "Waiting for cert-manager pods to be ready..."
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=300s
+        echo "OK! cert-manager is ready"
+      register: cert_manager_ready
+
     # Step 8: Deploy Jenkins
     - name: Step 8 - Deploy Jenkins
       debug:
@@ -520,8 +539,8 @@
           tail -f /tmp/app-service.log
           ========================================
 
-    - name: Launch the app-service.sh monitor script in the background
-      shell: "nohup {{ project_root }}/app-service.sh > /tmp/app-service.log 2>&1 &"
+    - name: Launch the app-service.sh monitor script in the background with full permissions
+      shell: "nohup sudo {{ project_root }}/app-service.sh > /tmp/app-service.log 2>&1 &"
       args:
         chdir: "{{ project_root }}"
 
