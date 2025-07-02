@@ -15,5 +15,5 @@ nodes:
   - containerPort: 31707
     hostPort: 31707
   extraMounts:
-  - hostPath: /mnt/c/users/spyro/documents/project/Dpet/jenkins_home
+  - hostPath: HOSTPATH_PLACEHOLDER
     containerPath: /jenkins_home 

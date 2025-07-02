@@ -69,3 +69,5 @@ kubeconfig
 /tmp/
 ./tmp/
 ./tmp/*
+
+kind-config.yaml

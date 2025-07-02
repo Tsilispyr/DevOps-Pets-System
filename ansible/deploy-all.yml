@@ -144,6 +144,11 @@
           ========================================
           Creating new kind cluster with jenkins_home mount...
 
+    - name: Generate kind-config.yaml with correct hostPath
+      shell: ./generate-kind-config.sh
+      args:
+        chdir: "{{ project_root }}"
+
     - name: Create new Kind cluster with jenkins_home mount
       shell: |
         kind create cluster --name {{ cluster_name }} --config {{ project_root }}/kind-config.yaml
@@ -179,11 +184,11 @@
           ========================================
           STEP 3.5: DEPLOYING NGINX-INGRESS CONTROLLER
           ========================================
-          Applying official nginx-ingress manifest...
+          Applying local ingress-nginx-controller manifest...
 
-    - name: Deploy nginx-ingress controller
+    - name: Deploy nginx-ingress controller (local NodePort manifest)
       shell: |
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-controller.yaml
       register: nginx_ingress_apply
       failed_when: false
 
