@@ -198,7 +198,6 @@ spec:
             drop:
             - ALL
           runAsUser: 101
-        terminationGracePeriodSeconds: 300
       dnsPolicy: ClusterFirst
       nodeSelector:
         kubernetes.io/os: linux
