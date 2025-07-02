@@ -44,9 +44,14 @@ Dpet/
 2. **Εκτέλεση**:
    ```bash
    cd Dpet
-   ansible-playbook ansible/deploy-all.yml
+   chmod +x deploy.sh
+   ./deploy.sh
    ```
-   Αυτό στήνει όλο το cluster, Jenkins, DB, Mailhog, MinIO, Ingress, και ξεκινά το port-forwarding.
+'Η εάν υπάρχει ήδη ansible 
+```bash
+ansible-playbook ansible/deploy-all.yml
+ ```
+   Αυτό στήνει όλο το cluster, Jenkins, DB, Mailhog, Ingress, και ξεκινά το port-forwarding.
 
 ## Καθημερινή Χρήση
 
