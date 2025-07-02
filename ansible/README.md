@@ -36,7 +36,7 @@ ansible/
 ## Χρήση
 - **Ολικό deployment**:
   ```bash
-  ./run-deployment.sh
+  ./deploy.sh
   # ή
   ansible-playbook -i inventory.ini deploy-all.yml
   ```
