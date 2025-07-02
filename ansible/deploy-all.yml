@@ -480,6 +480,11 @@
     #   register: port_forward_setup
     #   failed_when: false
 
+    - name: Ensure start-port-forwards.sh is executable
+      file:
+        path: "{{ project_root }}/start-port-forwards.sh"
+        mode: '0755'
+
     - name: Setup robust port forwarding in background with full permissions
       shell: "nohup sudo {{ project_root }}/start-port-forwards.sh > /tmp/port-forward.log 2>&1 &"
       args:
