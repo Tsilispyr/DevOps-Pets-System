@@ -59,3 +59,13 @@ kubeconfig
 
 # Ansible
 *.retry ansible/kubectl
+
+# Ignore port-forward log and PID files
+*-port-forward
+*-port-forward.pid
+*-port-forward.log
+
+# Ignore tmp directory and its contents
+/tmp/
+./tmp/
+./tmp/*

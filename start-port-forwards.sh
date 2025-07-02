@@ -14,12 +14,15 @@ pkill -f "kubectl port-forward.*postgres" || true
 pkill -f "kubectl port-forward.*ingress-nginx" || true
 sleep 2
 
+# Ensure tmp directory exists for PID and log files
+mkdir -p ./tmp
+
 # Start Ingress-NGINX port forward in background
 if kubectl get pods -n ingress-nginx -l app.kubernetes.io/component=controller 2>/dev/null | grep -q 'Running'; then
   echo "Starting Ingress-NGINX port forward (8888:80)..."
-  kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8888:80 > /tmp/ingress-nginx-port-forward.log 2>&1 &
+  kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8888:80 > ./tmp/ingress-nginx-port-forward.log 2>&1 &
   INGRESS_NGINX_PID=$!
-  echo $INGRESS_NGINX_PID > /tmp/ingress-nginx-port-forward.pid
+  echo $INGRESS_NGINX_PID > ./tmp/ingress-nginx-port-forward.pid
   echo "OK! Ingress-NGINX port forward is running (PID: $INGRESS_NGINX_PID)"
 else
   echo "ERR! Ingress-NGINX pod not running, will retry in loop..."
@@ -27,50 +30,50 @@ fi
 
 # Start Jenkins port forward in background
 echo "Starting Jenkins port forward (8082:8080)..."
-kubectl port-forward -n devops-pets service/jenkins 8082:8080 > /tmp/jenkins-port-forward.log 2>&1 &
+kubectl port-forward -n devops-pets service/jenkins 8082:8080 > ./tmp/jenkins-port-forward.log 2>&1 &
 JENKINS_PID=$!
-echo $JENKINS_PID > /tmp/jenkins-port-forward.pid
+echo $JENKINS_PID > ./tmp/jenkins-port-forward.pid
 echo "OK! Jenkins port forward is running (PID: $JENKINS_PID)"
 
 # Start MailHog port forward in background  
 echo "Starting MailHog port forward (8025:8025)..."
-kubectl port-forward -n devops-pets service/mailhog 8025:8025 > /tmp/mailhog-port-forward.log 2>&1 &
+kubectl port-forward -n devops-pets service/mailhog 8025:8025 > ./tmp/mailhog-port-forward.log 2>&1 &
 MAILHOG_PID=$!
-echo $MAILHOG_PID > /tmp/mailhog-port-forward.pid
+echo $MAILHOG_PID > ./tmp/mailhog-port-forward.pid
 echo "OK! MailHog port forward is running (PID: $MAILHOG_PID)"
 
 # Start MinIO port forwards in background
 echo "Starting MinIO API port forward (9000:9000)..."
-kubectl port-forward -n devops-pets service/minio 9000:9000 > /tmp/minio-api-port-forward.log 2>&1 &
+kubectl port-forward -n devops-pets service/minio 9000:9000 > ./tmp/minio-api-port-forward.log 2>&1 &
 MINIO_API_PID=$!
-echo $MINIO_API_PID > /tmp/minio-api-port-forward.pid
+echo $MINIO_API_PID > ./tmp/minio-api-port-forward.pid
 echo "OK! MinIO API port forward is running (PID: $MINIO_API_PID)"
 
 echo "Starting MinIO Console port forward (9001:9001)..."
-kubectl port-forward -n devops-pets service/minio 9001:9001 > /tmp/minio-console-port-forward.log 2>&1 &
+kubectl port-forward -n devops-pets service/minio 9001:9001 > ./tmp/minio-console-port-forward.log 2>&1 &
 MINIO_CONSOLE_PID=$!
-echo $MINIO_CONSOLE_PID > /tmp/minio-console-port-forward.pid
+echo $MINIO_CONSOLE_PID > ./tmp/minio-console-port-forward.pid
 echo "OK! MinIO Console port forward is running (PID: $MINIO_CONSOLE_PID)"
 
 # Start Postgres port forward in background
 echo "Starting Postgres port forward (5432:5432)..."
-kubectl port-forward -n devops-pets service/postgres 5432:5432 > /tmp/postgres-port-forward.log 2>&1 &
+kubectl port-forward -n devops-pets service/postgres 5432:5432 > ./tmp/postgres-port-forward.log 2>&1 &
 POSTGRES_PID=$!
-echo $POSTGRES_PID > /tmp/postgres-port-forward.pid
+echo $POSTGRES_PID > ./tmp/postgres-port-forward.pid
 echo "OK! Postgres port forward is running (PID: $POSTGRES_PID)"
 
 # Start Backend port forward in background
 echo "Starting Backend port forward (8080:8080)..."
-kubectl port-forward -n devops-pets service/backend 8080:8080 > /tmp/backend-port-forward.log 2>&1 &
+kubectl port-forward -n devops-pets service/backend 8080:8080 > ./tmp/backend-port-forward.log 2>&1 &
 BACKEND_PID=$!
-echo $BACKEND_PID > /tmp/backend-port-forward.pid
+echo $BACKEND_PID > ./tmp/backend-port-forward.pid
 echo "OK! Backend port forward is running (PID: $BACKEND_PID)"
 
 # Start Frontend port forward in background
 echo "Starting Frontend port forward (8081:80)..."
-kubectl port-forward -n devops-pets service/frontend 8081:80 > /tmp/frontend-port-forward.log 2>&1 &
+kubectl port-forward -n devops-pets service/frontend 8081:80 > ./tmp/frontend-port-forward.log 2>&1 &
 FRONTEND_PID=$!
-echo $FRONTEND_PID > /tmp/frontend-port-forward.pid
+echo $FRONTEND_PID > ./tmp/frontend-port-forward.pid
 echo "OK! Frontend port forward is running (PID: $FRONTEND_PID)"
 
 # Wait for port forwards to establish
@@ -192,9 +195,9 @@ while true; do
       if echo "$pods_output" | grep -q 'Running'; then
         if ! is_port_forward_active $local_port; then
           echo "Starting ingress-nginx port forward ($local_port:$target_port)..."
-          kubectl port-forward -n $namespace service/$svc $local_port:$target_port > /tmp/${label}-port-forward.log 2>&1 &
-          echo $! > /tmp/${label}-port-forward.pid
-          echo "OK! ingress-nginx port forward is running (PID: $(cat /tmp/${label}-port-forward.pid))"
+          kubectl port-forward -n $namespace service/$svc $local_port:$target_port > ./tmp/${label}-port-forward.log 2>&1 &
+          echo $! > ./tmp/${label}-port-forward.pid
+          echo "OK! ingress-nginx port forward is running (PID: $(cat ./tmp/${label}-port-forward.pid))"
         fi
       else
         if [ -z "$pods_output" ]; then
@@ -209,9 +212,9 @@ while true; do
     if echo "$pods_output" | grep -q 'Running'; then
       if ! is_port_forward_active $local_port; then
         echo "Starting $label port forward ($local_port:$target_port)..."
-        kubectl port-forward -n $namespace service/$svc $local_port:$target_port > /tmp/${label}-port-forward.log 2>&1 &
-        echo $! > /tmp/${label}-port-forward.pid
-        echo "OK! $label port forward is running (PID: $(cat /tmp/${label}-port-forward.pid))"
+        kubectl port-forward -n $namespace service/$svc $local_port:$target_port > ./tmp/${label}-port-forward.log 2>&1 &
+        echo $! > ./tmp/${label}-port-forward.pid
+        echo "OK! $label port forward is running (PID: $(cat ./tmp/${label}-port-forward.pid))"
       fi
     else
       if [ -z "$pods_output" ]; then

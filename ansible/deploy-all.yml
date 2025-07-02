@@ -481,7 +481,7 @@
     #   failed_when: false
 
     - name: Setup robust port forwarding in background with full permissions
-      shell: "nohup sudo {{ project_root }}/start-port-forwards.sh > /tmp/port-forward.log 2>&1 &"
+      shell: "bash start-port-forwards.sh > ./tmp/port-forward.log 2>&1 &"
       args:
         chdir: "{{ project_root }}"
 
