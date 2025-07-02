@@ -347,6 +347,7 @@
         - jenkins/jenkins-pvc.yaml
         - jenkins/jenkins-deployment.yaml
         - jenkins/jenkins-service.yaml
+        - jenkins/jenkins-ingress.yaml
       register: jenkins_deploy
 
     - name: Wait for Jenkins to be ready
