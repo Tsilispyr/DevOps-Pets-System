@@ -11,7 +11,7 @@
 
 Όλα γίνονται με Ansible playbooks και Kubernetes manifests, ώστε να στήνεται τοπικά, σε VM, ή στο cloud με ένα command.
 
-## Σύνδεση με F-B-END
+## Σύνδεση με F-B-END (https://github.com/Tsilispyr/DevOps-Pets-Frontend-Backend.git)
 Το Dpet στήνει όλη την υποδομή πάνω στην οποία τρέχει το F-B-END (backend & frontend εφαρμογή). Η επικοινωνία γίνεται μέσω Kubernetes services και Ingress. Το deployment του F-B-END γίνεται αυτόματα μέσω Jenkins pipeline.
 
 ## Δομή
