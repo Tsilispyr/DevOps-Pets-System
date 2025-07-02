@@ -1,103 +1,85 @@
-# Kubernetes Infrastructure Manifests
+# Kubernetes Υποδομή - Manifests
 
-## Overview
+## Επισκόπηση
 
-This directory contains Kubernetes manifests for deploying the core infrastructure components of the DevPets system. These manifests define the Jenkins CI/CD platform, PostgreSQL database, and MailHog email testing service.
+Αυτός ο φάκελος περιέχει Kubernetes manifests για την ανάπτυξη των βασικών υποδομών του συστήματος DevPets. Περιλαμβάνει Jenkins CI/CD, PostgreSQL database και MailHog για δοκιμές email.
 
-## Directory Structure
+## Δομή Φακέλου
 
 ```
 k8s/
-├── jenkins/                    # Jenkins CI/CD platform
+├── jenkins/                    # Jenkins CI/CD
 │   ├── jenkins-deployment.yaml # Jenkins deployment
 │   ├── jenkins-service.yaml    # Jenkins service
 │   ├── jenkins-pvc.yaml        # Jenkins persistent volume claim
-│   ├── jenkins-rbac.yaml       # Jenkins RBAC configuration
+│   ├── jenkins-rbac.yaml       # Jenkins RBAC
 │   └── Dockerfile              # Jenkins custom image
-├── postgres/                   # PostgreSQL database
+├── postgres/                   # Βάση PostgreSQL
 │   ├── postgres-deployment.yaml # PostgreSQL deployment
 │   ├── postgres-service.yaml   # PostgreSQL service
-│   ├── postgres-pvc.yaml       # PostgreSQL persistent volume claim
-│   ├── postgres-secret.yaml    # Database credentials
-│   └── Dockerfile              # PostgreSQL custom image
-├── mailhog/                    # MailHog email testing
+│   ├── postgres-pvc.yaml       # PostgreSQL PVC
+│   ├── postgres-secret.yaml    # Credentials DB
+│   └── Dockerfile              # Custom image
+├── mailhog/                    # MailHog για δοκιμές email
 │   ├── mailhog-deployment.yaml # MailHog deployment
 │   ├── mailhog-service.yaml    # MailHog service
-│   └── Dockerfile              # MailHog custom image
-└── README.md                   # This documentation
+│   └── Dockerfile              # Custom image
+└── README.md                   # Τεκμηρίωση
 ```
 
-## Components
+## Συνιστώμενα Components
 
-### Jenkins CI/CD Platform
+### Jenkins CI/CD
 
 #### jenkins-deployment.yaml
-Jenkins deployment configuration with the following features:
-
-- **Image**: Custom Jenkins image with plugins
-- **Port**: 8080 (HTTP)
-- **Storage**: Persistent volume for Jenkins home
-- **Resources**: CPU and memory limits
-- **Health Checks**: Readiness and liveness probes
-- **Environment Variables**: Jenkins configuration
+- **Εικόνα**: Custom Jenkins image με plugins
+- **Θύρα**: 8080 (HTTP)
+- **Αποθήκευση**: Persistent volume για Jenkins home
+- **Πόροι**: Όρια CPU/μνήμης
+- **Έλεγχοι Υγείας**: Readiness/liveness probes
+- **Μεταβλητές Περιβάλλοντος**: Jenkins config
 
 #### jenkins-service.yaml
-Service configuration for Jenkins access:
-
-- **Type**: LoadBalancer
-- **Port**: 8080
+- **Τύπος**: LoadBalancer
+- **Θύρα**: 8080
 - **Target Port**: 8080
-- **External Access**: Available on cluster IP
-- **Session Affinity**: None
+- **Εξωτερική Πρόσβαση**: Μέσω cluster IP
 
 #### jenkins-pvc.yaml
-Persistent volume claim for Jenkins data:
-
 - **Storage Class**: Standard
 - **Access Mode**: ReadWriteOnce
-- **Size**: 10Gi
-- **Purpose**: Jenkins home directory persistence
+- **Μέγεθος**: 10Gi
+- **Σκοπός**: Jenkins home directory
 
 #### jenkins-rbac.yaml
-Role-based access control for Jenkins:
-
 - **Service Account**: jenkins-admin
-- **Cluster Role**: Full cluster permissions
-- **Role Binding**: Binds service account to cluster role
+- **Cluster Role**: Πλήρη δικαιώματα cluster
+- **Role Binding**: Σύνδεση με cluster role
 - **Namespace**: devops-pets
 
 ### PostgreSQL Database
 
 #### postgres-deployment.yaml
-PostgreSQL deployment configuration:
-
-- **Image**: postgres:15
-- **Port**: 5432
-- **Storage**: Persistent volume for data
-- **Resources**: CPU and memory limits
-- **Health Checks**: Readiness and liveness probes
-- **Environment Variables**: Database configuration
+- **Εικόνα**: postgres:15
+- **Θύρα**: 5432
+- **Αποθήκευση**: Persistent volume
+- **Πόροι**: Όρια CPU/μνήμης
+- **Έλεγχοι Υγείας**: Readiness/liveness probes
+- **Μεταβλητές Περιβάλλοντος**: DB config
 
 #### postgres-service.yaml
-Service configuration for database access:
-
-- **Type**: ClusterIP
-- **Port**: 5432
+- **Τύπος**: ClusterIP
+- **Θύρα**: 5432
 - **Target Port**: 5432
-- **Internal Access**: Available within cluster
-- **Session Affinity**: None
+- **Εσωτερική Πρόσβαση**: Μόνο εντός cluster
 
 #### postgres-pvc.yaml
-Persistent volume claim for database data:
-
 - **Storage Class**: Standard
 - **Access Mode**: ReadWriteOnce
-- **Size**: 5Gi
-- **Purpose**: PostgreSQL data directory persistence
+- **Μέγεθος**: 5Gi
+- **Σκοπός**: Αποθήκευση δεδομένων DB
 
 #### postgres-secret.yaml
-Database credentials and configuration:
-
 - **Database Name**: petdb
 - **Username**: petuser
 - **Password**: petpass
@@ -107,188 +89,49 @@ Database credentials and configuration:
 ### MailHog Email Testing
 
 #### mailhog-deployment.yaml
-MailHog deployment configuration:
-
-- **Image**: mailhog/mailhog:latest
-- **Port**: 1025 (SMTP), 8025 (HTTP)
-- **Storage**: In-memory storage
-- **Resources**: CPU and memory limits
-- **Health Checks**: Readiness and liveness probes
+- **Εικόνα**: mailhog/mailhog:latest
+- **Θύρες**: 1025 (SMTP), 8025 (HTTP)
+- **Αποθήκευση**: In-memory
+- **Πόροι**: Όρια CPU/μνήμης
+- **Έλεγχοι Υγείας**: Readiness/liveness probes
 
 #### mailhog-service.yaml
-Service configuration for MailHog access:
-
-- **Type**: LoadBalancer
-- **Ports**: 1025 (SMTP), 8025 (HTTP)
+- **Τύπος**: LoadBalancer
+- **Θύρες**: 1025 (SMTP), 8025 (HTTP)
 - **Target Ports**: 1025, 8025
-- **External Access**: Available on cluster IP
-- **Session Affinity**: None
+- **Εξωτερική Πρόσβαση**: Μέσω cluster IP
 
-## Configuration Details
+## Διαδικασία Ανάπτυξης
 
-### Jenkins Configuration
-
-#### Environment Variables
-```yaml
-- name: JENKINS_OPTS
-  value: "--prefix=/jenkins"
-- name: JAVA_OPTS
-  value: "-Djenkins.install.runSetupWizard=false"
-- name: JENKINS_SLAVE_AGENT_PORT
-  value: "50000"
-```
-
-#### Health Checks
-```yaml
-livenessProbe:
-  httpGet:
-    path: /login
-    port: 8080
-  initialDelaySeconds: 60
-  periodSeconds: 10
-readinessProbe:
-  httpGet:
-    path: /login
-    port: 8080
-  initialDelaySeconds: 30
-  periodSeconds: 5
-```
-
-#### Resource Limits
-```yaml
-resources:
-  requests:
-    memory: "1Gi"
-    cpu: "500m"
-  limits:
-    memory: "2Gi"
-    cpu: "1000m"
-```
-
-### PostgreSQL Configuration
-
-#### Environment Variables
-```yaml
-- name: POSTGRES_DB
-  valueFrom:
-    secretKeyRef:
-      name: postgres-secret
-      key: database
-- name: POSTGRES_USER
-  valueFrom:
-    secretKeyRef:
-      name: postgres-secret
-      key: username
-- name: POSTGRES_PASSWORD
-  valueFrom:
-    secretKeyRef:
-      name: postgres-secret
-      key: password
-```
-
-#### Health Checks
-```yaml
-livenessProbe:
-  exec:
-    command:
-    - pg_isready
-    - -U
-    - petuser
-    - -d
-    - petdb
-  initialDelaySeconds: 30
-  periodSeconds: 10
-readinessProbe:
-  exec:
-    command:
-    - pg_isready
-    - -U
-    - petuser
-    - -d
-    - petdb
-  initialDelaySeconds: 5
-  periodSeconds: 5
-```
-
-#### Resource Limits
-```yaml
-resources:
-  requests:
-    memory: "512Mi"
-    cpu: "250m"
-  limits:
-    memory: "1Gi"
-    cpu: "500m"
-```
-
-### MailHog Configuration
-
-#### Environment Variables
-```yaml
-- name: MH_STORAGE
-  value: "memory"
-- name: MH_HOSTNAME
-  value: "mailhog-service"
-```
-
-#### Health Checks
-```yaml
-livenessProbe:
-  httpGet:
-    path: /
-    port: 8025
-  initialDelaySeconds: 30
-  periodSeconds: 10
-readinessProbe:
-  httpGet:
-    path: /
-    port: 8025
-  initialDelaySeconds: 5
-  periodSeconds: 5
-```
-
-#### Resource Limits
-```yaml
-resources:
-  requests:
-    memory: "128Mi"
-    cpu: "100m"
-  limits:
-    memory: "256Mi"
-    cpu: "200m"
-```
-
-## Deployment Process
-
-### 1. Namespace Creation
+### 1. Δημιουργία Namespace
 ```bash
 kubectl create namespace devops-pets
 kubectl config set-context --current --namespace=devops-pets
 ```
 
-### 2. Secrets and ConfigMaps
+### 2. Secrets & ConfigMaps
 ```bash
-# Apply database secrets
+# Εφαρμογή DB secrets
 kubectl apply -f postgres/postgres-secret.yaml
 
-# Apply any additional ConfigMaps
+# Εφαρμογή επιπλέον ConfigMaps (αν υπάρχουν)
 kubectl apply -f configmaps/
 ```
 
 ### 3. Persistent Volumes
 ```bash
-# Apply PVCs
+# Εφαρμογή PVCs
 kubectl apply -f jenkins/jenkins-pvc.yaml
 kubectl apply -f postgres/postgres-pvc.yaml
 ```
 
-### 4. RBAC Configuration
+### 4. RBAC
 ```bash
-# Apply Jenkins RBAC
+# Εφαρμογή Jenkins RBAC
 kubectl apply -f jenkins/jenkins-rbac.yaml
 ```
 
-### 5. Application Deployment
+### 5. Ανάπτυξη Εφαρμογών
 ```bash
 # Deploy PostgreSQL
 kubectl apply -f postgres/
@@ -300,37 +143,37 @@ kubectl apply -f mailhog/
 kubectl apply -f jenkins/
 ```
 
-### 6. Verification
+### 6. Επαλήθευση
 ```bash
-# Check pod status
+# Έλεγχος pods
 kubectl get pods -n devops-pets
 
-# Check services
+# Έλεγχος services
 kubectl get services -n devops-pets
 
-# Check persistent volumes
+# Έλεγχος persistent volumes
 kubectl get pv,pvc -n devops-pets
 ```
 
-## Access Points
+## Σημεία Πρόσβασης
 
-### External Access
-- **Jenkins**: http://localhost:8082
+### Εξωτερική Πρόσβαση
+- **Jenkins**: https://pet-system-devpets.swedencentral.cloudapp.azure.com
 - **MailHog**: http://localhost:8025
-- **Frontend**: Port will be shown in Jenkins pipeline output
-- **Backend API**: Port will be shown in Jenkins pipeline output
+- **Frontend**: Εμφανίζεται στο output του pipeline Jenkins
+- **Backend API**: Εμφανίζεται στο output του pipeline Jenkins
 
-### Internal Services
+### Εσωτερικές Υπηρεσίες
 - **PostgreSQL**: postgres-service:5432
 - **MailHog SMTP**: mailhog-service:1025
 - **Jenkins**: jenkins-service:8080
 
-## Storage Configuration
+## Ρυθμίσεις Αποθήκευσης
 
 ### Persistent Volumes
-- **Jenkins Home**: 10Gi for Jenkins data and plugins
-- **PostgreSQL Data**: 5Gi for database files
-- **Storage Class**: Standard (hostPath for Kind)
+- **Jenkins Home**: 10Gi για δεδομένα Jenkins
+- **PostgreSQL Data**: 5Gi για DB
+- **Storage Class**: Standard (hostPath για Kind)
 
 ### Volume Mounts
 ```yaml
@@ -343,114 +186,101 @@ kubectl get pv,pvc -n devops-pets
   mountPath: /var/lib/postgresql/data
 ```
 
-## Security Configuration
+## Ασφάλεια
 
-### RBAC (Role-Based Access Control)
-- **Jenkins Service Account**: Full cluster permissions
-- **Namespace Isolation**: All resources in devops-pets namespace
-- **Secret Management**: Database credentials in Kubernetes secrets
+### RBAC
+- **Jenkins Service Account**: Πλήρη δικαιώματα
+- **Namespace Isolation**: Όλα στο devops-pets
+- **Secret Management**: DB credentials σε Kubernetes secrets
 
-### Network Security
-- **Service Mesh**: Consider Istio for advanced networking
-- **Network Policies**: Restrict pod-to-pod communication
-- **Ingress Security**: TLS termination and authentication
+### Δικτυακή Ασφάλεια
+- **Service Mesh**: (προαιρετικό) Istio
+- **Network Policies**: Περιορισμός επικοινωνίας pods
+- **Ingress Security**: TLS termination & authentication
 
-## Monitoring and Logging
+## Παρακολούθηση & Logging
 
 ### Health Checks
-- **Readiness Probes**: Ensure services are ready to accept traffic
-- **Liveness Probes**: Restart pods if they become unresponsive
-- **Startup Probes**: Handle slow-starting containers
+- **Readiness Probes**: Έλεγχος διαθεσιμότητας
+- **Liveness Probes**: Αυτόματη επανεκκίνηση pods
+- **Startup Probes**: Για αργή εκκίνηση
 
 ### Logging
-- **Application Logs**: Container logs via kubectl logs
-- **System Logs**: Kubernetes event logs
+- **Application Logs**: `kubectl logs`
+- **System Logs**: Kubernetes events
 - **Audit Logs**: API server audit logs
 
 ### Metrics
-- **Resource Usage**: CPU and memory monitoring
-- **Storage Usage**: Persistent volume monitoring
-- **Network Traffic**: Service communication metrics
+- **Resource Usage**: Παρακολούθηση CPU/μνήμης
+- **Storage Usage**: Παρακολούθηση PV
+- **Network Traffic**: Παρακολούθηση επικοινωνίας
 
-## Troubleshooting
+## Επίλυση Προβλημάτων
 
-### Common Issues
+### Συχνά Προβλήματα
 
-#### Pod Not Starting
+#### Pod δεν ξεκινά
 ```bash
-# Check pod events
 kubectl describe pod <pod-name> -n devops-pets
-
-# Check pod logs
 kubectl logs <pod-name> -n devops-pets
-
-# Check pod status
 kubectl get pods -n devops-pets
 ```
 
-#### Service Not Accessible
+#### Service μη προσβάσιμο
 ```bash
-# Check service endpoints
 kubectl get endpoints -n devops-pets
-
-# Test service connectivity
 kubectl run test-pod --image=busybox --rm -it --restart=Never -- nslookup <service-name>
 ```
 
-#### Storage Issues
+#### Προβλήματα αποθήκευσης
 ```bash
-# Check PVC status
 kubectl get pvc -n devops-pets
-
-# Check PV status
 kubectl get pv
-
-# Check storage class
 kubectl get storageclass
 ```
 
-### Debugging Commands
+### Debugging
 ```bash
-# Port forward to debug
 kubectl port-forward <pod-name> <local-port>:<pod-port> -n devops-pets
-
-# Execute commands in pod
 kubectl exec -it <pod-name> -n devops-pets -- /bin/sh
-
-# Copy files from/to pod
 kubectl cp <pod-name>:/path/to/file ./local-file -n devops-pets
 ```
 
-## Maintenance
+## Συντήρηση
 
-### Updates and Upgrades
+### Ενημερώσεις & Backup
 - **Rolling Updates**: Zero-downtime deployments
-- **Version Management**: Track and update component versions
-- **Backup Strategy**: Regular backups of persistent data
+- **Version Management**: Παρακολούθηση εκδόσεων
+- **Backup Strategy**: Τακτικά backup δεδομένων
 
-### Backup and Recovery
-- **Jenkins Data**: Backup Jenkins home directory
-- **Database**: Regular PostgreSQL backups
-- **Configuration**: Version control for all manifests
+### Backup & Recovery
+- **Jenkins Data**: Backup Jenkins home
+- **Database**: Backup PostgreSQL
+- **Configuration**: Έλεγχος εκδόσεων manifests
 
 ### Scaling
-- **Horizontal Scaling**: Scale pods based on demand
-- **Resource Optimization**: Adjust CPU and memory limits
-- **Storage Scaling**: Increase volume sizes as needed
+- **Horizontal Scaling**: Αυτόματη κλιμάκωση
+- **Resource Optimization**: Ρύθμιση πόρων
+- **Storage Scaling**: Αύξηση volumes
 
-## Performance Optimization
+## Βελτιστοποίηση Απόδοσης
 
-### Resource Management
-- **Resource Limits**: Prevent resource exhaustion
-- **Resource Requests**: Ensure minimum resources
-- **Horizontal Pod Autoscaling**: Automatic scaling based on metrics
+### Διαχείριση Πόρων
+- **Resource Limits**: Αποφυγή εξάντλησης
+- **Resource Requests**: Ελάχιστοι πόροι
+- **Horizontal Pod Autoscaling**: Αυτόματη κλιμάκωση
 
 ### Storage Optimization
-- **Storage Class Selection**: Choose appropriate storage class
-- **Volume Provisioning**: Optimize volume sizes
-- **Data Retention**: Implement data lifecycle policies
+- **Storage Class Selection**: Επιλογή storage class
+- **Volume Provisioning**: Βελτιστοποίηση μεγέθους
+- **Data Retention**: Πολιτικές διατήρησης
 
 ### Network Optimization
-- **Service Discovery**: Efficient service resolution
-- **Load Balancing**: Distribute traffic evenly
-- **Connection Pooling**: Optimize database connections 
+- **Service Discovery**: Αποδοτική επίλυση
+- **Load Balancing**: Ισοκατανομή traffic
+- **Connection Pooling**: Βελτιστοποίηση DB connections
+
+---
+
+**Cloud/HTTPS Σημείωση:**
+Για παραγωγική χρήση, προτείνεται η χρήση Ingress με HTTPS termination και cert-manager για αυτόματη έκδοση SSL certificates. 

@@ -17,7 +17,7 @@ spec:
   - host: pet-system-devpets.swedencentral.cloudapp.azure.com
     http:
       paths:
-      - path: /
+      - path: /jenkins
         pathType: Prefix
         backend:
           service:
