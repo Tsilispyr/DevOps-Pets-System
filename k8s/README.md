@@ -33,7 +33,7 @@ k8s/
 
 #### jenkins-deployment.yaml
 - **Εικόνα**: Custom Jenkins image με plugins
-- **Θύρα**: 8080 (HTTP)
+- **Θύρα**: 8082 (HTTP)
 - **Αποθήκευση**: Persistent volume για Jenkins home
 - **Πόροι**: Όρια CPU/μνήμης
 - **Έλεγχοι Υγείας**: Readiness/liveness probes
@@ -41,7 +41,7 @@ k8s/
 
 #### jenkins-service.yaml
 - **Τύπος**: LoadBalancer
-- **Θύρα**: 8080
+- **Θύρα**: 8082
 - **Target Port**: 8080
 - **Εξωτερική Πρόσβαση**: Μέσω cluster IP
 
