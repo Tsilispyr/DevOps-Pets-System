@@ -144,6 +144,12 @@
           ========================================
           Creating new kind cluster with jenkins_home mount...
 
+    - name: Ensure generate-kind-config.sh is executable
+      file:
+        path: "{{ project_root }}/generate-kind-config.sh"
+        mode: '0755'
+        state: file
+
     - name: Generate kind-config.yaml with correct hostPath
       shell: ./generate-kind-config.sh
       args:
