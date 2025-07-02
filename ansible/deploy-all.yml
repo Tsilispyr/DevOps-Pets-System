@@ -459,8 +459,6 @@
           POD STATUS:
           {{ final_pod_verification.stdout }}
 
-
-
     # Step 12: Display completion
     - name: Step 12 - Display completion
       debug:
@@ -504,13 +502,13 @@
           tail -f /tmp/app-service.log
           ========================================
 
-    - name: Launch the app-service.sh monitor script in the background with full permissions
-      shell: "nohup sudo {{ project_root }}/app-service.sh > /tmp/app-service.log 2>&1 &"
-      args:
-        chdir: "{{ project_root }}"
-        
+    - name: Ensure start-port-forwards.sh is executable
+      file:
+        path: "{{ project_root }}/start-port-forwards.sh"
+        mode: '0755'
+        state: file
 
-      # Step 14: Setup Port Forwarding
+    # Step 14: Setup Port Forwarding
     - name: Step 14 - Setup Port Forwarding
       debug:
         msg: |
