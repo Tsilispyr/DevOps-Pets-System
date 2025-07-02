@@ -167,6 +167,13 @@
           CLUSTER CREATION STATUS:
           {{ cluster_create.stdout }}
 
+    - name: Apply ingress-nginx RBAC for admission webhook (FIRST)
+      shell: |
+        echo "Applying RBAC for ingress-nginx admission webhook FIRST..."
+        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-rbac.yaml
+      register: ingress_nginx_rbac_apply
+      failed_when: false
+
     - name: Deploy local ingress-nginx controller (complete manifest)
       shell: |
         kubectl apply -f {{ project_root }}/k8s/ingress-nginx-controller.yaml
@@ -178,13 +185,6 @@
         echo "Waiting for ingress-nginx controller pod to be ready..."
         kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=180s
       register: ingress_nginx_local_ready
-      failed_when: false
-
-    - name: Apply ingress-nginx RBAC for admission webhook
-      shell: |
-        echo "Applying RBAC for ingress-nginx admission webhook..."
-        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-rbac.yaml
-      register: ingress_nginx_rbac_apply
       failed_when: false
 
     - name: Wait for ingress-nginx admission jobs to complete
