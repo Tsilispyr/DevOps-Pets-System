@@ -167,6 +167,19 @@
           CLUSTER CREATION STATUS:
           {{ cluster_create.stdout }}
 
+    - name: Deploy local ingress-nginx controller (complete manifest)
+      shell: |
+        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-controller.yaml
+      register: ingress_nginx_local_apply
+      failed_when: false
+
+    - name: Wait for ingress-nginx controller pod to be ready
+      shell: |
+        echo "Waiting for ingress-nginx controller pod to be ready..."
+        kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=180s
+      register: ingress_nginx_local_ready
+      failed_when: false
+
     - name: Export kubeconfig
       shell: kind export kubeconfig --name {{ cluster_name }}
       register: kubeconfig_export
@@ -183,37 +196,21 @@
           - API Server: {{ cluster_info.stdout }}
           - Kubeconfig: Exported to current directory
 
-    # Step 3.5: Deploy nginx-ingress controller
-    - name: Step 3.5 - Deploy nginx-ingress controller
+    # Step 3.5: Verify ingress-nginx controller deployment
+    - name: Step 3.5 - Verify ingress-nginx controller deployment
       debug:
         msg: |
           ========================================
-          STEP 3.5: DEPLOYING NGINX-INGRESS CONTROLLER
+          STEP 3.5: VERIFYING INGRESS-NGINX CONTROLLER
           ========================================
-          Applying local ingress-nginx-controller manifest...
+          Verifying local ingress-nginx-controller deployment...
 
-    - name: Deploy nginx-ingress controller (local NodePort manifest)
-      shell: |
-        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-controller.yaml
-      register: nginx_ingress_apply
-      failed_when: false
-
-    - name: Wait for nginx-ingress controller to be ready
-      shell: |
-        echo "Waiting for nginx-ingress controller to be ready..."
-        kubectl wait --namespace ingress-nginx \
-          --for=condition=ready pod \
-          --selector=app.kubernetes.io/component=controller \
-          --timeout=180s
-      register: nginx_ingress_ready
-      failed_when: false
-
-    - name: Display nginx-ingress status
+    - name: Display ingress-nginx status
       debug:
         msg: |
-          NGINX-INGRESS STATUS:
-          Apply: {{ 'OK! Applied' if nginx_ingress_apply.rc == 0 else 'ERR! Failed' }}
-          Ready: {{ nginx_ingress_ready.stdout }}
+          INGRESS-NGINX STATUS:
+          Apply: {{ 'OK! Applied' if ingress_nginx_local_apply.rc == 0 else 'ERR! Failed' }}
+          Ready: {{ ingress_nginx_local_ready.stdout }}
 
     # Step 4: Create namespace
     - name: Step 4 - Create namespace
