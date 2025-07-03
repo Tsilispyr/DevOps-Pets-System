@@ -395,10 +395,25 @@
           STEP 7.6: GENERATING SELF-SIGNED CERTIFICATES
           ========================================
 
+    - name: Check if certificate generation script exists
+      stat:
+        path: "{{ project_root }}/generate-infrastructure-certs.sh"
+      register: cert_script_check
+
+    - name: Fail if certificate script is missing
+      fail:
+        msg: "Certificate generation script not found at {{ project_root }}/generate-infrastructure-certs.sh"
+      when: not cert_script_check.stat.exists
+
+    - name: Ensure certificate generation script has permissions
+      file:
+        path: "{{ project_root }}/generate-infrastructure-certs.sh"
+        mode: '0755'
+        state: file
+
     - name: Generate infrastructure certificates
       shell: |
         cd {{ project_root }}
-        chmod +x generate-infrastructure-certs.sh
         ./generate-infrastructure-certs.sh
       register: cert_generation
 
@@ -408,6 +423,15 @@
         kubectl apply -f jenkins-tls-secret.yaml
         kubectl apply -f mailhog-tls-secret.yaml
       register: cert_application
+
+    - name: Display certificate generation status
+      debug:
+        msg: |
+          CERTIFICATE GENERATION STATUS:
+          Script exists: {{ 'OK! Found' if cert_script_check.stat.exists else 'ERR! Missing' }}
+          Script permissions: 0755 (executable)
+          Generation: {{ 'OK! Generated' if cert_generation.rc == 0 else 'ERR! Failed' }}
+          Application: {{ 'OK! Applied' if cert_application.rc == 0 else 'ERR! Failed' }}
 
     # Step 8: Deploy Jenkins
     - name: Step 8 - Deploy Jenkins
