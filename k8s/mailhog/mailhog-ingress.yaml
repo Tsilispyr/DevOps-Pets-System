@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: jenkins-ingress
+  name: mailhog-ingress
   namespace: devops-pets
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -11,16 +11,16 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - jenkins.petsystem46.swedencentral.cloudapp.azure.com
-    secretName: jenkins-tls
+    - mailhog.petsystem46.swedencentral.cloudapp.azure.com
+    secretName: mailhog-tls
   rules:
-  - host: jenkins.petsystem46.swedencentral.cloudapp.azure.com
+  - host: mailhog.petsystem46.swedencentral.cloudapp.azure.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: jenkins
+            name: mailhog
             port:
-              number: 8080 
+              number: 8025 

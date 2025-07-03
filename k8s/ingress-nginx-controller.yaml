@@ -132,11 +132,15 @@ spec:
       containers:
       - args:
         - /nginx-ingress-controller
-        - --publish-service=$(POD_NAMESPACE)/ingress-nginx-controller
         - --election-id=ingress-nginx-leader
         - --controller-class=k8s.io/ingress-nginx
         - --ingress-class=nginx
         - --configmap=$(POD_NAMESPACE)/ingress-nginx-controller
+        - --validating-webhook=:8443
+        - --validating-webhook-certificate=/usr/local/certificates/cert
+        - --validating-webhook-key=/usr/local/certificates/key
+        - --watch-ingress-without-class=true
+        - --publish-status-address=localhost
         env:
         - name: POD_NAME
           valueFrom:
@@ -148,7 +152,7 @@ spec:
               fieldPath: metadata.namespace
         - name: LD_PRELOAD
           value: /usr/local/lib/libmimalloc.so
-        image: registry.k8s.io/ingress-nginx/controller:v1.10.10c
+        image: registry.k8s.io/ingress-nginx/controller:v1.8.1@sha256:e5c4824e7375fcf2a393e1c03c293b69759af37a9ca6abdb91b13d78a93da8bd
         imagePullPolicy: IfNotPresent
         lifecycle:
           preStop:
@@ -168,9 +172,11 @@ spec:
         name: controller
         ports:
         - containerPort: 80
+          hostPort: 80
           name: http
           protocol: TCP
         - containerPort: 443
+          hostPort: 443
           name: https
           protocol: TCP
         - containerPort: 8443
@@ -198,8 +204,13 @@ spec:
             drop:
             - ALL
           runAsUser: 101
+        volumeMounts:
+        - mountPath: /usr/local/certificates/
+          name: webhook-cert
+          readOnly: true
       dnsPolicy: ClusterFirst
       nodeSelector:
+        ingress-ready: "true"
         kubernetes.io/os: linux
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -208,7 +219,18 @@ spec:
         runAsNonRoot: true
         runAsUser: 101
       serviceAccountName: ingress-nginx
-      terminationGracePeriodSeconds: 300
+      terminationGracePeriodSeconds: 0
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Equal
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Equal
+      volumes:
+      - name: webhook-cert
+        secret:
+          secretName: ingress-nginx-admission
 ---
 apiVersion: batch/v1
 kind: Job
@@ -242,13 +264,11 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20231011-8b53cabe0
+        image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20230407@sha256:543c40fd093964bc9ab509d3e791f9989963021f1e9e4c9c7b6700b02bfb227b
         imagePullPolicy: IfNotPresent
         name: create
         securityContext:
           allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 2000
       nodeSelector:
         kubernetes.io/os: linux
       restartPolicy: OnFailure
@@ -292,13 +312,11 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20231011-8b53cabe0
+        image: registry.k8s.io/ingress-nginx/kube-webhook-certgen:v20230407@sha256:543c40fd093964bc9ab509d3e791f9989963021f1e9e4c9c7b6700b02bfb227b
         imagePullPolicy: IfNotPresent
         name: patch
         securityContext:
           allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 2000
       nodeSelector:
         kubernetes.io/os: linux
       restartPolicy: OnFailure

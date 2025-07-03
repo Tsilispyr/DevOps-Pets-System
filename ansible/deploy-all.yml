@@ -180,6 +180,18 @@
       register: ingress_nginx_local_apply
       failed_when: false
 
+    - name: Label node for ingress-nginx
+      shell: |
+        kubectl label node {{ cluster_name }}-control-plane ingress-ready=true --overwrite
+      register: node_label_apply
+      failed_when: false
+
+    - name: Create ingress-nginx admission secret if not exists
+      shell: |
+        kubectl create secret generic ingress-nginx-admission --from-literal=cert="" --from-literal=key="" -n ingress-nginx --dry-run=client -o yaml | kubectl apply -f - || true
+      register: admission_secret_create
+      failed_when: false
+
     - name: Wait for ingress-nginx controller pod to be ready
       shell: |
         echo "Waiting for ingress-nginx controller pod to be ready..."
@@ -190,8 +202,8 @@
     - name: Wait for ingress-nginx admission jobs to complete
       shell: |
         echo "Waiting for ingress-nginx admission jobs to complete..."
-        kubectl wait --for=condition=complete job/ingress-nginx-admission-create -n ingress-nginx --timeout=120s
-        kubectl wait --for=condition=complete job/ingress-nginx-admission-patch -n ingress-nginx --timeout=120s
+        kubectl wait --for=condition=complete job/ingress-nginx-admission-create -n ingress-nginx --timeout=120s || true
+        kubectl wait --for=condition=complete job/ingress-nginx-admission-patch -n ingress-nginx --timeout=120s || true
         echo "OK! Admission jobs completed successfully"
       register: ingress_nginx_admission_ready
       failed_when: false
@@ -426,6 +438,7 @@
       loop:
         - mailhog/mailhog-deployment.yaml
         - mailhog/mailhog-service.yaml
+        - mailhog/mailhog-ingress.yaml
       register: mailhog_deploy
 
     - name: Wait for MailHog to be ready
@@ -497,8 +510,11 @@
           ========================================
           ACCESS URLs
           ========================================
-          Jenkins: http://localhost:8082
-          MailHog: http://localhost:8025
+          Jenkins: https://jenkins.petsystem46.swedencentral.cloudapp.azure.com
+          MailHog: https://mailhog.petsystem46.swedencentral.cloudapp.azure.com
+          Frontend: https://petsystem46.swedencentral.cloudapp.azure.com
+          Backend API: https://api.petsystem46.swedencentral.cloudapp.azure.com
+          Minio Console: https://minio.petsystem46.swedencentral.cloudapp.azure.com
           PostgreSQL: Running in cluster
           
           ========================================
