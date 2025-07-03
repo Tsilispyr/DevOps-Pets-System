@@ -199,13 +199,19 @@
       register: ingress_nginx_local_ready
       failed_when: false
 
-    - name: Wait for ingress-nginx admission jobs to complete
+    - name: Skip ingress-nginx admission webhook (using self-signed certificates)
       shell: |
-        echo "Waiting for ingress-nginx admission jobs to complete..."
-        kubectl wait --for=condition=complete job/ingress-nginx-admission-create -n ingress-nginx --timeout=120s || true
-        kubectl wait --for=condition=complete job/ingress-nginx-admission-patch -n ingress-nginx --timeout=120s || true
-        echo "OK! Admission jobs completed successfully"
-      register: ingress_nginx_admission_ready
+        echo "Skipping ingress-nginx admission webhook validation (using self-signed certificates)..."
+        echo "This is normal for self-signed certificate setup"
+      register: webhook_skip
+      failed_when: false
+
+    - name: Wait for ingress-nginx controller to be ready
+      shell: |
+        echo "Waiting for ingress-nginx controller to be ready..."
+        kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=180s
+        echo "OK! Ingress-nginx controller is ready"
+      register: ingress_nginx_ready
       failed_when: false
 
     - name: Export kubeconfig
@@ -371,24 +377,37 @@
           Deployment: {% for item in postgres_deploy.results %}{{ item.item }}: {{ 'OK! Applied' if item.rc == 0 else 'ERR! Failed' }}{% endfor %}
           Ready: {{ postgres_ready.stdout }}
 
-    # Step 7.5: Install cert-manager
-    - name: Step 7.5 - Install cert-manager
+    # Step 7.5: Skip cert-manager (using self-signed certificates)
+    - name: Step 7.5 - Skip cert-manager installation
       debug:
         msg: |
           ========================================
-          STEP 7.5: INSTALLING CERT-MANAGER
+          STEP 7.5: SKIPPING CERT-MANAGER
+          ========================================
+          Using self-signed certificates instead of cert-manager
           ========================================
 
-    - name: Install cert-manager
-      shell: kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.yaml
-      register: cert_manager_install
+    # Step 7.6: Generate self-signed certificates for infrastructure
+    - name: Step 7.6 - Generate self-signed certificates for infrastructure
+      debug:
+        msg: |
+          ========================================
+          STEP 7.6: GENERATING SELF-SIGNED CERTIFICATES
+          ========================================
 
-    - name: Wait for cert-manager to be ready
+    - name: Generate infrastructure certificates
       shell: |
-        echo "Waiting for cert-manager pods to be ready..."
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=300s
-        echo "OK! cert-manager is ready"
-      register: cert_manager_ready
+        cd {{ project_root }}
+        chmod +x generate-infrastructure-certs.sh
+        ./generate-infrastructure-certs.sh
+      register: cert_generation
+
+    - name: Apply infrastructure certificates
+      shell: |
+        cd {{ project_root }}
+        kubectl apply -f jenkins-tls-secret.yaml
+        kubectl apply -f mailhog-tls-secret.yaml
+      register: cert_application
 
     # Step 8: Deploy Jenkins
     - name: Step 8 - Deploy Jenkins
@@ -397,10 +416,6 @@
           ========================================
           STEP 8: DEPLOYING JENKINS
           ========================================
-
-    - name: Deploy ClusterIssuer for HTTPS certificates
-      shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/cluster-issuer.yaml
-      register: cluster_issuer_deploy
 
     - name: Deploy Jenkins infrastructure
       shell: kubectl apply -f {{ project_root }}/{{ k8s_dir }}/{{ item }} -n {{ namespace }}
