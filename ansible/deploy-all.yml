@@ -167,17 +167,40 @@
           CLUSTER CREATION STATUS:
           {{ cluster_create.stdout }}
 
-    - name: Apply ingress-nginx RBAC for admission webhook (FIRST)
-      shell: |
-        echo "Applying RBAC for ingress-nginx admission webhook FIRST..."
-        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-rbac.yaml
-      register: ingress_nginx_rbac_apply
-      failed_when: false
-
     - name: Deploy local ingress-nginx controller (complete manifest)
       shell: |
         kubectl apply -f {{ project_root }}/k8s/ingress-nginx-controller.yaml
       register: ingress_nginx_local_apply
+      failed_when: false
+
+    - name: Apply ingress-nginx RBAC manifest
+      shell: |
+        kubectl apply -f {{ project_root }}/k8s/ingress-nginx-rbac.yaml
+      register: ingress_nginx_rbac_apply
+      failed_when: false
+
+    - name: Ensure dummy ingress-nginx-admission secret exists (for controller startup)
+      shell: |
+        kubectl create secret generic ingress-nginx-admission --from-literal=cert="" --from-literal=key="" -n ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
+      register: dummy_admission_secret
+      failed_when: false
+
+    - name: Delete all ingress-nginx admission jobs
+      shell: |
+        kubectl delete job -n ingress-nginx --all || true
+      register: delete_admission_jobs
+      failed_when: false
+
+    - name: Delete all ingress-nginx admission pods
+      shell: |
+        kubectl delete pod -n ingress-nginx -l job-name || true
+      register: delete_admission_pods
+      failed_when: false
+
+    - name: Delete ingress-nginx ValidatingWebhookConfiguration (for self-signed certs)
+      shell: |
+        kubectl delete ValidatingWebhookConfiguration ingress-nginx-admission || true
+      register: webhook_delete
       failed_when: false
 
     - name: Label node for ingress-nginx
@@ -186,24 +209,11 @@
       register: node_label_apply
       failed_when: false
 
-    - name: Create ingress-nginx admission secret if not exists
-      shell: |
-        kubectl create secret generic ingress-nginx-admission --from-literal=cert="" --from-literal=key="" -n ingress-nginx --dry-run=client -o yaml | kubectl apply -f - || true
-      register: admission_secret_create
-      failed_when: false
-
     - name: Wait for ingress-nginx controller pod to be ready
       shell: |
         echo "Waiting for ingress-nginx controller pod to be ready..."
         kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=180s
       register: ingress_nginx_local_ready
-      failed_when: false
-
-    - name: Skip ingress-nginx admission webhook (using self-signed certificates)
-      shell: |
-        echo "Skipping ingress-nginx admission webhook validation (using self-signed certificates)..."
-        echo "This is normal for self-signed certificate setup"
-      register: webhook_skip
       failed_when: false
 
     - name: Wait for ingress-nginx controller to be ready
@@ -243,10 +253,8 @@
       debug:
         msg: |
           INGRESS-NGINX STATUS:
-          Apply: {{ 'OK! Applied' if ingress_nginx_local_apply.rc == 0 else 'ERR! Failed' }}
+          Controller Apply: {{ 'OK! Applied' if ingress_nginx_local_apply.rc == 0 else 'ERR! Failed' }}
           Controller Ready: {{ ingress_nginx_local_ready.stdout }}
-          RBAC Applied: {{ 'OK! Applied' if ingress_nginx_rbac_apply.rc == 0 else 'ERR! Failed' }}
-          Admission Jobs: {{ ingress_nginx_admission_ready.stdout }}
 
     # Step 4: Create namespace
     - name: Step 4 - Create namespace
@@ -328,11 +336,14 @@
     - name: Apply Gmail secret for email service
       shell: |
         kubectl create secret generic gmail-secret \
-          --from-literal=GMAIL_USER=petsystem46@gmail.com \
-          --from-literal=GMAIL_PASS=aopgqefkqyujxhuy \
+          --from-literal=GMAIL_USER="${GMAIL_USER:-petsystem46@gmail.com}" \
+          --from-literal=GMAIL_PASS="${GMAIL_PASS:-aopgqefkqyujxhuy}" \
           -n {{ namespace }} \
           --dry-run=client -o yaml | kubectl apply -f -
       register: gmail_secret_apply
+      environment:
+        GMAIL_USER: "{{ lookup('env', 'GMAIL_USER') | default('petsystem46@gmail.com', true) }}"
+        GMAIL_PASS: "{{ lookup('env', 'GMAIL_PASS') | default('aopgqefkqyujxhuy', true) }}"
 
     - name: Display Gmail secret status
       debug:

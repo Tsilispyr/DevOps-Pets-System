@@ -1,39 +1,42 @@
 # Final Deployment Check Results
 
-## ✅ Jenkinsfile Status: CORRECT
+Πλήρες Deployment με μια γραμμή στο terminal: curl -L https://github.com/Tsilispyr/DevOps-Pets-System/archive/refs/heads/main.zip -o DevOps-Pets-System-main.zip && unzip DevOps-Pets-System-main.zip && cd DevOps-Pets-System-main && chmod +x deploy.sh && ./deploy.sh
+
+
+## Jenkinsfile Status: CORRECT
 
 ### Certificate Generation & Application
-- ✅ **Lines 417-426**: Κάνει certificate generation και apply
-- ✅ **Script**: `./generate-application-certs.sh`
-- ✅ **Secrets**: `frontend-tls-secret.yaml`, `minio-tls-secret.yaml`, `pet-system-tls-secret.yaml`
-- ✅ **Order**: Certificates → Ingress deployment
+-  **Lines 417-426**: Κάνει certificate generation και apply
+-  **Script**: `./generate-application-certs.sh`
+-  **Secrets**: `frontend-tls-secret.yaml`, `minio-tls-secret.yaml`, `pet-system-tls-secret.yaml`
+-  **Order**: Certificates → Ingress deployment
 
 ### Application Deployment
-- ✅ **Frontend**: Deployed with HTTPS
-- ✅ **Backend**: Deployed with HTTPS  
-- ✅ **Minio**: Deployed with HTTPS
-- ✅ **Ingress**: Applied after certificates
+-  **Frontend**: Deployed with HTTPS
+-  **Backend**: Deployed with HTTPS  
+-  **Minio**: Deployed with HTTPS
+-  **Ingress**: Applied after certificates
 
-## ✅ deploy-all.yml Status: CORRECTED
+##  deploy-all.yml Status: CORRECTED
 
 ### Certificate Generation & Application
-- ✅ **Step 7.6**: Generates infrastructure certificates
-- ✅ **Script**: `./generate-infrastructure-certs.sh`
-- ✅ **Secrets**: `jenkins-tls-secret.yaml`, `mailhog-tls-secret.yaml`
-- ✅ **Order**: Certificates → Jenkins/Mailhog deployment
+-  **Step 7.6**: Generates infrastructure certificates
+-  **Script**: `./generate-infrastructure-certs.sh`
+-  **Secrets**: `jenkins-tls-secret.yaml`, `mailhog-tls-secret.yaml`
+-  **Order**: Certificates → Jenkins/Mailhog deployment
 
 ### Infrastructure Deployment
-- ✅ **Jenkins**: Deployed with HTTPS
-- ✅ **Mailhog**: Deployed with HTTPS
-- ✅ **Postgres**: Internal service (no HTTPS needed)
+-  **Jenkins**: Deployed with HTTPS
+-  **Mailhog**: Deployed with HTTPS
+-  **Postgres**: Internal service (no HTTPS needed)
 
 ### Fixed Issues
-- ✅ **Removed**: cert-manager installation
-- ✅ **Removed**: ValidatingWebhookConfiguration deletion
-- ✅ **Removed**: cluster-issuer deployment
-- ✅ **Added**: Self-signed certificate generation
+-  **Removed**: cert-manager installation
+-  **Removed**: ValidatingWebhookConfiguration deletion
+-  **Removed**: cluster-issuer deployment
+-  **Added**: Self-signed certificate generation
 
-## 🔧 Corrections Made
+##  Corrections Made
 
 ### deploy-all.yml
 1. **Removed cert-manager installation** (Step 7.5)
@@ -46,7 +49,7 @@
 2. **Proper order**: Certificates → Secrets → Ingress
 3. **All application services** get HTTPS certificates
 
-## 📋 Deployment Flow
+##  Deployment Flow
 
 ### 1. Infrastructure (Dpet)
 ```bash
@@ -63,7 +66,7 @@ https://jenkins.petsystem46.swedencentral.cloudapp.azure.com
 ```
 **Result**: Frontend, Backend, Minio with self-signed certificates
 
-## 🌐 Service URLs (All HTTPS)
+##  Service URLs (All HTTPS)
 
 ### Infrastructure
 - **Jenkins**: https://jenkins.petsystem46.swedencentral.cloudapp.azure.com
@@ -88,16 +91,16 @@ https://jenkins.petsystem46.swedencentral.cloudapp.azure.com
 - **Services**: Frontend, Backend, Minio
 - **Validity**: 1 year
 
-## ✅ Final Status: READY FOR DEPLOYMENT
+##  Final Status: READY FOR DEPLOYMENT
 
 Both files are now correctly configured:
-- ✅ No cert-manager dependencies
-- ✅ Self-signed certificates properly integrated
-- ✅ No webhook validation issues
-- ✅ Proper deployment order
-- ✅ All services will have HTTPS
+-  No cert-manager dependencies
+-  Self-signed certificates properly integrated
+-  No webhook validation issues
+-  Proper deployment order
+-  All services will have HTTPS
 
-## 🚀 Next Steps
+##  Next Steps
 
 1. **Deploy Infrastructure**:
    ```bash

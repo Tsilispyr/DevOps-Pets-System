@@ -39,72 +39,63 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Windows Host                             │
+│                        Windows Host                            │
 ├─────────────────────────────────────────────────────────────────┤
-│                    WSL2 (Linux Subsystem)                       │
+│                    WSL2 (Linux Subsystem)                      │
 ├─────────────────────────────────────────────────────────────────┤
-│                 Kind Kubernetes Cluster                         │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   Jenkins Pod   │  │  Frontend Pod   │  │  Backend Pod    │  │
-│  │                 │  │                 │  │                 │  │
-│  │ - CI/CD Pipeline│  │ - Vue.js App    │  │ - Spring Boot   │  │
-│  │ - Build Tools   │  │ - Nginx Proxy   │  │ - REST API      │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │  PostgreSQL Pod │  │  MailHog Pod    │  │ MetalLB/Ingress │  │
-│  │                 │  │                 │  │                 │  │
-│  │ - Database      │  │ - Email Testing │  │ - Load Balancing│  │
-│  │ - Data Storage  │  │ - SMTP Server   │  │ - Traffic Route │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+│                 Kind Kubernetes Cluster                        │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │   Jenkins Pod   │  │  Frontend Pod   │  │  Backend Pod    │ │
+│  │                 │  │                 │  │                 │ │
+│  │ - CI/CD Pipeline│  │ - Vue.js App    │  │ - Spring Boot   │ │
+│  │ - Build Tools   │  │ - Nginx Proxy   │  │ - REST API      │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │  PostgreSQL Pod │  │  MailHog Pod    │  │ MetalLB/Ingress │ │
+│  │                 │  │                 │  │                 │ │
+│  │ - Database      │  │ - Email Testing │  │ - Load Balancing│ │
+│  │ - Data Storage  │  │ - SMTP Server   │  │ - Traffic Route │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Network Architecture
 
 ```
-┌───────────────────────────────────────────────────────────┐
-│                    External Access Layer                  │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  │
-│  │   Browser     │  │   API Calls   │  │   Jenkins     │  │
-│  │ localhost:8081│  │ localhost:8080│  │ localhost:8082│  │
-│  └───────────────┘  └───────────────┘  └───────────────┘  │
-└───────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    External Access Layer                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Browser   │  │   API Calls │  │   Jenkins   │            │
+│  │ localhost:8081│  │ localhost:8080│  │ localhost:8082 │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
                                 │
-┌──────────────────────────────────────────────────┐
-│                    Ingress Controller Layer      │
-│  ┌──────────────────────────────────────────────┐│
-│  │              nginx-ingress-controlle         ││
-│  │  - Route / → frontend service                ││
-│  │  - Route /api → backend service              ││
-│  └──────────────────────────────────────────────┘│
-└──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Ingress Controller Layer                    │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              nginx-ingress-controller                       │ │
+│  │  - Route / → frontend service                              │ │
+│  │  - Route /api → backend service                            │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
                                 │
-┌───────────────────────────────────────────────────────┐
-│                    Service Layer                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │  Frontend   │  │   Backend   │  │  PostgreSQL │    │
-│  │ LoadBalancer│  │ LoadBalancer│  │ ClusterIP   │    │
-│  │   :80       │  │   :8080     │  │   :5432     │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-└───────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Service Layer                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │  Frontend   │  │   Backend   │  │  PostgreSQL │            │
+│  │ LoadBalancer│  │ LoadBalancer│  │ ClusterIP   │            │
+│  │   :80       │  │   :8080     │  │   :5432     │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
                                 │
-┌─────────────────────────────────────────────────────┐
-│                    Pod Layer                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
-│  │  Frontend   │  │   Backend   │  │  PostgreSQL │  │
-│  │   Pod       │  │    Pod      │  │    Pod      │  │
-│  │ nginx:alpine│  │ openjdk:17  │  │ postgres:15 │  │
-│  └─────────────┘  └─────────────┘  └─────────────┘  │
-└─────────────────────────────────────────────────────┘
-                                │ 
-┌─────────────────────────────────────────────────────┐
-│                    Storage Layer                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
-│  │   Shared    │  │  Jenkins    │  │ PostgreSQL  │  │
-│  │   Storage   │  │   Storage   │  │   Storage   │  │
-│  │   (PVC)     │  │   (PVC)     │  │   (PVC)     │  │
-│  └─────────────┘  └─────────────┘  └─────────────┘  │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Pod Layer                                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │  Frontend   │  │   Backend   │  │  PostgreSQL │            │
+│  │   Pod       │  │    Pod      │  │    Pod      │            │
+│  │ nginx:alpine│  │ openjdk:17  │  │ postgres:15 │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Component Diagrams
@@ -112,86 +103,86 @@
 ### Application Component Diagram
 
 ```
-┌───────────────────────────────────────────────────────┐
-│                        Frontend (Vue.js)              │
-├───────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐   │
-│  │   Router    │  │   Store     │  │ Components   │   │
-│  │             │  │             │  │              │   │
-│  │ - Navigation│  │ - State Mgmt│  │ - UI Elements│   │
-│  │ - Auth Guard│  │ - User Data │  │ - Forms      │   │
-│  └─────────────┘  └─────────────┘  └──────────────┘   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │   API Layer │  │   Views     │  │   Services  │    │
-│  │             │  │             │  │             │    │
-│  │ - HTTP Calls│  │ - Pages     │  │ - Business  │    │
-│  │ - Auth Token│  │ - Templates │  │   Logic     │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-└───────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Frontend (Vue.js)                       │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Router    │  │   Store     │  │ Components  │            │
+│  │             │  │             │  │             │            │
+│  │ - Navigation│  │ - State Mgmt│  │ - UI Elements│            │
+│  │ - Auth Guard│  │ - User Data │  │ - Forms     │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   API Layer │  │   Views     │  │   Services  │            │
+│  │             │  │             │  │             │            │
+│  │ - HTTP Calls│  │ - Pages     │  │ - Business  │            │
+│  │ - Auth Token│  │ - Templates │  │   Logic     │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
-┌──────────────────────────────────────────────────────┐
-│                        Backend (Spring Boot)         │
-├──────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
-│  │ Controllers │  │   Services  │  │ Repositories│   │
-│  │             │  │             │  │             │   │
-│  │ - REST APIs │  │ - Business  │  │ - Data      │   │
-│  │ - Auth      │  │   Logic     │  │   Access    │   │
-│  └─────────────┘  └─────────────┘  └─────────────┘   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
-│  │   Entities  │  │   Security  │  │   Config    │   │
-│  │             │  │             │  │             │   │
-│  │ - Data Model│  │ - JWT Auth  │  │ - App Props │   │
-│  │ - Validation│  │ - Roles     │  │ - Database  │   │
-│  └─────────────┘  └─────────────┘  └─────────────┘   │
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Backend (Spring Boot)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │ Controllers │  │   Services  │  │ Repositories│            │
+│  │             │  │             │  │             │            │
+│  │ - REST APIs │  │ - Business  │  │ - Data      │            │
+│  │ - Auth      │  │   Logic     │  │   Access    │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Entities  │  │   Security  │  │   Config    │            │
+│  │             │  │             │  │             │            │
+│  │ - Data Model│  │ - JWT Auth  │  │ - App Props │            │
+│  │ - Validation│  │ - Roles     │  │ - Database  │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
-┌───────────────────────────────────────────────────────┐
-│                        Database (PostgreSQL)          │
-├───────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │    Users    │  │   Animals   │  │  Requests   │    │
-│  │             │  │             │  │             │    │
-│  │ - User Data │  │ - Pet Info  │  │ - Adoption  │    │
-│  │ - Roles     │  │ - Status    │  │   Requests  │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-└───────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Database (PostgreSQL)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │    Users    │  │   Animals   │  │  Requests   │            │
+│  │             │  │             │  │             │            │
+│  │ - User Data │  │ - Pet Info  │  │ - Adoption  │            │
+│  │ - Roles     │  │ - Status    │  │   Requests  │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### DevOps Component Diagram
 
 ```
-┌──────────────────────────────────────────────────────┐
-│                        Jenkins Pipeline              │
-├──────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
-│  │   Checkout  │  │   Build     │  │   Deploy    │   │
-│  │             │  │             │  │             │   │
-│  │ - Git Repo  │  │ - Maven     │  │ - Kubernetes│   │
-│  │ - Code      │  │ - NPM       │  │ - Services  │   │
-│  └─────────────┘  └─────────────┘  └─────────────┘   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐   │
-│  │   Setup     │  │   Verify    │  │   Ingress   │   │
-│  │             │  │             │  │             │   │
-│  │ - Kubeconfig│  │ - Health    │  │ - Routing   │   │
-│  │ - LoadBalancer│ │ - Logs     │  │ - Access    │   │
-│  └─────────────┘  └─────────────┘  └─────────────┘   │
-└──────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Jenkins Pipeline                        │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Checkout  │  │   Build     │  │   Deploy    │            │
+│  │             │  │             │  │             │            │
+│  │ - Git Repo  │  │ - Maven     │  │ - Kubernetes│            │
+│  │ - Code      │  │ - NPM       │  │ - Services  │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   Setup     │  │   Verify    │  │   Ingress   │            │
+│  │             │  │             │  │             │            │
+│  │ - Kubeconfig│  │ - Health    │  │ - Routing   │            │
+│  │ - LoadBalancer│ │ - Logs      │  │ - Access    │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
-┌───────────────────────────────────────────────────────┐
-│                    Infrastructure (Ansible)           │
-├───────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
-│  │   System    │  │ Kubernetes  │  │   Jenkins   │    │
-│  │   Setup     │  │   Setup     │  │   Setup     │    │
-│  │             │  │             │  │             │    │
-│  │ - Docker    │  │ - Kind      │  │ - Pipeline  │    │
-│  │ - Tools     │  │ - Cluster   │  │ - RBAC      │    │
-│  └─────────────┘  └─────────────┘  └─────────────┘    │
-└───────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Infrastructure (Ansible)                    │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
+│  │   System    │  │ Kubernetes  │  │   Jenkins   │            │
+│  │   Setup     │  │   Setup     │  │   Setup     │            │
+│  │             │  │             │  │             │            │
+│  │ - Docker    │  │ - Kind      │  │ - Pipeline  │            │
+│  │ - Tools     │  │ - Cluster   │  │ - RBAC      │            │
+│  └─────────────┘  └─────────────┘  └─────────────┘            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Class Diagrams
@@ -199,112 +190,112 @@
 ### Backend Entity Classes
 
 ```
-┌──────────────────────────────────────────────┐
-│                           User               │
-├──────────────────────────────────────────────┤
-│ - id: Long                                   │
-│ - username: String                           │
-│ - email: String                              │
-│ - password: String                           │
-│ - emailVerified: Boolean                     │
-│ - createdAt: LocalDateTime                   │
-│ - lastLogin: LocalDateTime                   │
-│ - verificationToken: String                  │
-│ - verificationTokenExpiry: LocalDateTime     │
-│ - roles: Set<Role>                           │
-├──────────────────────────────────────────────┤
-│ + register()                                 │
-│ + login()                                    │
-│ + verifyEmail()                              │
-│ + updateProfile()                            │
-└──────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                           User                                  │
+├─────────────────────────────────────────────────────────────────┤
+│ - id: Long                                                      │
+│ - username: String                                              │
+│ - email: String                                                 │
+│ - password: String                                              │
+│ - emailVerified: Boolean                                        │
+│ - createdAt: LocalDateTime                                      │
+│ - lastLogin: LocalDateTime                                      │
+│ - verificationToken: String                                     │
+│ - verificationTokenExpiry: LocalDateTime                        │
+│ - roles: Set<Role>                                              │
+├─────────────────────────────────────────────────────────────────┤
+│ + register()                                                    │
+│ + login()                                                       │
+│ + verifyEmail()                                                 │
+│ + updateProfile()                                               │
+└─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
-┌─────────────────────┐
-│      Role           │
-├─────────────────────┤
-│ - id: Long          │
-│ - name: String      │
-│ - users: Set<User>  │
-├─────────────────────┤
-│ + assignToUser()    │
-│ + removeFromUser()  │
-└─────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                           Role                                  │
+├─────────────────────────────────────────────────────────────────┤
+│ - id: Long                                                      │
+│ - name: String                                                  │
+│ - users: Set<User>                                              │
+├─────────────────────────────────────────────────────────────────┤
+│ + assignToUser()                                                │
+│ + removeFromUser()                                              │
+└─────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────┐
-│     Animal              │
-├─────────────────────────┤
-│ - id: Long              │
-│ - name: String          │
-│ - type: String          │
-│ - age: Integer          │
-│ - gender: Gender        │
-│ - req: String           │
-│ - userId: Long          │
-│ - user: User            │
-├─────────────────────────┤
-│ + createAnimal()        │
-│ + updateAnimal()        │
-│ + deleteAnimal()        │
-│ + getAnimalsByUser()    │
-└─────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                          Animal                                 │
+├─────────────────────────────────────────────────────────────────┤
+│ - id: Long                                                      │
+│ - name: String                                                  │
+│ - type: String                                                  │
+│ - age: Integer                                                  │
+│ - gender: Gender                                                │
+│ - req: String                                                   │
+│ - userId: Long                                                  │
+│ - user: User                                                    │
+├─────────────────────────────────────────────────────────────────┤
+│ + createAnimal()                                                │
+│ + updateAnimal()                                                │
+│ + deleteAnimal()                                                │
+│ + getAnimalsByUser()                                            │
+└─────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────┐
-│      Request                │
-├─────────────────────────────┤
-│ - id: Long                  │
-│ - name: String              │
-│ - type: String              │
-│ - age: Integer              │
-│ - gender: Gender            │
-│ - adminApproved: Boolean    │
-│ - docApproved: Boolean      │
-├─────────────────────────────┤
-│ + submitRequest()           │
-│ + approveRequest()          │
-│ + rejectRequest()           │
-└─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         Request                                 │
+├─────────────────────────────────────────────────────────────────┤
+│ - id: Long                                                      │
+│ - name: String                                                  │
+│ - type: String                                                  │
+│ - age: Integer                                                  │
+│ - gender: Gender                                                │
+│ - adminApproved: Boolean                                        │
+│ - docApproved: Boolean                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ + submitRequest()                                               │
+│ + approveRequest()                                              │
+│ + rejectRequest()                                               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Frontend Component Classes
 
 ```
-┌──────────────────┐
-│     App.vue      │
-├──────────────────┤
-│ - router: Router │
-│ - store: Store   │
-│ - user: User     │
-├──────────────────┤
-│ + mounted()      │
-│ + checkAuth()    │
-│ + logout()       │
-└──────────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│   Router                │
-├─────────────────────────┤
-│ - routes: Array<Route>  │
-│ - guards: Array<Guard>  │
-├─────────────────────────┤
-│ + beforeEach()          │
-│ + afterEach()           │
-│ + push()                │
-└─────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        App.vue                                  │
+├─────────────────────────────────────────────────────────────────┤
+│ - router: Router                                                │
+│ - store: Store                                                  │
+│ - user: User                                                    │
+├─────────────────────────────────────────────────────────────────┤
+│ + mounted()                                                     │
+│ + checkAuth()                                                   │
+│ + logout()                                                      │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        Router                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ - routes: Array<Route>                                          │
+│ - guards: Array<Guard>                                          │
+├─────────────────────────────────────────────────────────────────┤
+│ + beforeEach()                                                  │
+│ + afterEach()                                                   │
+│ + push()                                                        │
+└─────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────┐
-│     Store           │
-├─────────────────────┤
-│ - state: State      │
-│ - mutations: Object │
-│ - actions: Object   │
-│ - getters: Object   │
-├─────────────────────┤
-│ + commit()          │
-│ + dispatch()        │
-│ + getters           │
-└─────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        Store                                    │
+├─────────────────────────────────────────────────────────────────┤
+│ - state: State                                                  │
+│ - mutations: Object                                             │
+│ - actions: Object                                               │
+│ - getters: Object                                               │
+├─────────────────────────────────────────────────────────────────┤
+│ + commit()                                                      │
+│ + dispatch()                                                    │
+│ + getters                                                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Infrastructure Setup
@@ -370,33 +361,45 @@ The F-B-END component contains the actual application code:
 
 ## Technical Challenges and Solutions
 
-### Πρόκληση 1: Εκτέλεση Jenkins μέσα στο Cluster
-**Πρόβλημα**: Το Jenkins πρέπει να μοιράζεται τα build artifacts (JAR αρχεία, frontend dist) με τα application pods.
-**Λύση**: Υλοποιήθηκε κοινόχρηστο PersistentVolumeClaim (PVC) με init containers που αντιγράφουν αρχεία από τον κοινό αποθηκευτικό χώρο προς τα application pods.
+### Challenge 1: Jenkins Running Inside Cluster
+**Problem**: Jenkins runs inside the Kubernetes cluster, making port forwarding inaccessible from the host machine.
 
-### Πρόκληση 3: Προβλήματα με τη ρύθμιση του Nginx
-Πρόβλημα: Η ρύθμιση του nginx για το frontend είχε συντακτικά λάθη και δεν γινόταν σωστό mounting.
-Λύση: Δημιουργήθηκε ConfigMap με τη σωστή ρύθμιση του nginx και διασφαλίστηκε το σωστό volume mounting στην ανάπτυξη του frontend.
+**Solution**: Implemented nginx-ingress controller for automatic traffic routing, eliminating the need for manual port forwarding.
 
-### Πρόκληση 4: Εξωτερική πρόσβαση LoadBalancer
-**Πρόβλημα**: Το Kind cluster δεν περιλαμβάνει controller για LoadBalancer από προεπιλογή.
-**Λύση**: Εγκαταστάθηκε MetalLB LoadBalancer controller και διαμορφώθηκαν IP address pools για εξωτερική πρόσβαση.
+### Challenge 2: File Sharing Between Jenkins and Pods
+**Problem**: Jenkins needs to share built artifacts (JAR files, frontend dist) with application pods.
 
-### Πρόκληση 5: Συνδεσιμότητα βάσης δεδομένων
-**Πρόβλημα**: Η backend εφαρμογή πρέπει να συνδεθεί με τη βάση δεδομένων PostgreSQL.
-**Λύση**: Η σύνδεση ρυθμίστηκε χρησιμοποιώντας την υπηρεσία Kubernetes service discovery και μεταβλητές περιβάλλοντος.
+**Solution**: Implemented shared PersistentVolumeClaim (PVC) with init containers that copy files from shared storage to application pods.
 
-### Πρόκληση 6: Δικαιώματα RBAC
-**Πρόβλημα**: Τα Jenkins pods χρειάζονται τα κατάλληλα δικαιώματα για να δημιουργούν και να διαχειρίζονται πόρους στο Kubernetes.
-**Λύση**: Δημιουργήθηκε custom ServiceAccount, Role και RoleBinding με τα απαραίτητα δικαιώματα για το namespace devops-pets.
+### Challenge 3: Nginx Configuration Issues
+**Problem**: Frontend nginx configuration had syntax errors and wasn't properly mounted.
 
-### Πρόκληση 7: Επικοινωνία Frontend-Backend
-**Πρόβλημα**: Το frontend πρέπει να επικοινωνεί με το backend API μέσω nginx proxy.
-**Λύση**: Ρυθμίστηκε nginx reverse proxy ώστε τα αιτήματα /api/ να δρομολογούνται προς την backend υπηρεσία, ενώ σερβίρονται στατικά αρχεία του frontend.
+**Solution**: Created ConfigMap with correct nginx configuration and ensured proper volume mounting in frontend deployment.
 
-### Πρόκληση 8: Μόνιμη αποθήκευση δεδομένων
-**Πρόβλημα**: Τα δεδομένα της βάσης και του Jenkins πρέπει να διατηρούνται μετά από επανεκκινήσεις των pods.
-**Λύση**: Υλοποιήθηκαν PersistentVolumes και PersistentVolumeClaims για τους καταλόγους δεδομένων του PostgreSQL και του Jenkins.
+### Challenge 4: LoadBalancer External Access
+**Problem**: Kind cluster doesn't have LoadBalancer controller by default.
+
+**Solution**: Installed MetalLB LoadBalancer controller and configured IP address pools for external access.
+
+### Challenge 5: Database Connectivity
+**Problem**: Backend application needs to connect to PostgreSQL database.
+
+**Solution**: Configured database connection using Kubernetes service discovery and environment variables.
+
+### Challenge 6: RBAC Permissions
+**Problem**: Jenkins pods needed proper permissions to create and manage Kubernetes resources.
+
+**Solution**: Created custom ServiceAccount, Role, and RoleBinding with appropriate permissions for the devops-pets namespace.
+
+### Challenge 7: Frontend-Backend Communication
+**Problem**: Frontend needs to communicate with backend API through nginx proxy.
+
+**Solution**: Configured nginx reverse proxy to route /api/ requests to backend service while serving frontend static files.
+
+### Challenge 8: Persistent Data Storage
+**Problem**: Database and Jenkins data need to persist across pod restarts.
+
+**Solution**: Implemented PersistentVolumes and PersistentVolumeClaims for PostgreSQL and Jenkins data directories.
 
 ## Directory Structure
 
@@ -495,33 +498,32 @@ F-B-END/
   - Backend API: http://localhost:8080/api
 - Users access the system via these URLs. No manual port forwarding is needed.
 
-#Το έργο αυτό παρουσιάζει μια πλήρη υλοποίηση DevOps με:
+## Conclusion
 
-    -> Infrastructure as Code: Αυτοματοποίηση με Ansible για τη ρύθμιση της υποδομής
-    -> Container Orchestration: Kubernetes για την ανάπτυξη της εφαρμογής
-    -> CI/CD Pipeline: Jenkins για αυτόματη κατασκευή και ανάπτυξη
-    -> Microservices Architecture: Ξεχωριστές υπηρεσίες frontend και backend
-    -> Load Balancing: MetalLB και nginx-ingress για διαχείριση της κίνησης
-    -> Persistent Storage: Μόνιμη αποθήκευση για δεδομένα της βάσης και του Jenkins
-    -> Ασφάλεια: RBAC και αυθεντικοποίηση JWT
-    -> Παρακολούθηση: Health checks και καταγραφή
-
-Το σύστημα προσφέρει ένα σταθερό υπόβαθρο για διαχείριση υιοθεσίας κατοικίδιων, με δυνατότητες αυτόματης ανάπτυξης, κλιμάκωσης και συντήρησης.
+This project demonstrates a complete DevOps implementation with:
+- **Infrastructure as Code**: Ansible automation for infrastructure setup
+- **Container Orchestration**: Kubernetes for application deployment
+- **CI/CD Pipeline**: Jenkins for automated build and deployment
+- **Microservices Architecture**: Separate frontend and backend services
+- **Load Balancing**: MetalLB and nginx-ingress for traffic management
+- **Persistent Storage**: Database and Jenkins data persistence
+- **Security**: RBAC and JWT authentication
+- **Monitoring**: Health checks and logging
 
 The system provides a robust foundation for pet adoption management with automated deployment, scaling, and maintenance capabilities.
 
-## Αυτοματοποιημένη Ροή Εργασιών
+## Automated Workflow
 
-Ο πυρήνας του έργου είναι ένα πλήρως αυτοματοποιημένο CI/CD pipeline που λαμβάνει αλλαγές κώδικα και τις αναπτύσσει σε τοπικό Kubernetes cluster, καθιστώντας τις προσβάσιμες στον προγραμματιστή χωρίς χειροκίνητες ενέργειες.
+The core of this project is a fully automated CI/CD pipeline that takes code changes and deploys them to a local Kubernetes cluster, making them accessible to the developer without manual intervention.
 
-Ακολουθεί η ακολουθία των βημάτων:
+Here is the sequence of events:
 
-    1. Αρχική Ρύθμιση: Ο προγραμματιστής εκτελεί ένα μόνο Ansible playbook για να δημιουργήσει το τοπικό Kubernetes cluster και να αναπτύξει όλες τις απαραίτητες υπηρεσίες (Jenkins κ.λπ.). Το playbook εκκινεί επίσης ένα background script για polling στον υπολογιστή του προγραμματιστή.
-    2. Push Κώδικα & Build: Όταν γίνεται push νέου κώδικα (ή ξεκινά ένα build χειροκίνητα), το Jenkins pipeline μέσα στο cluster κάνει checkout τον κώδικα.
-    3. Build & Deploy: Το Jenkins κατασκευάζει τις εφαρμογές frontend και backend. Στη συνέχεια χρησιμοποιεί kubectl για να εφαρμόσει τα Kubernetes manifests και να αναπτύξει τις νέες εκδόσεις. Τα build artifacts (JAR και dist) διαμοιράζονται στα application pods μέσω κοινόχρηστου Persistent Volume.
-    4. Polling & Port-Forwarding: Το script στον υπολογιστή του προγραμματιστή παρακολουθεί συνεχώς το Jenkins API για την ολοκλήρωση του build.
-    5. Ανίχνευση Επιτυχίας: Μόλις εντοπίσει επιτυχή build, εκτελεί ένα δεύτερο, μικρότερο Ansible playbook.
-    6. Αυτόματη Πρόσβαση: Το δεύτερο playbook περιμένει να σταθεροποιηθούν τα νέα pods και μετά ξεκινά αυτόματα kubectl port-forward, καθιστώντας τα frontend και backend άμεσα προσβάσιμα στο localhost του προγραμματιστή.
+1.  **Initial Setup:** The developer runs a single Ansible playbook to create the local Kubernetes cluster and deploy all the necessary services (Jenkins, etc.). This playbook also starts a background polling script on the developer's machine.
+2.  **Code Push & Build:** When new code is pushed (or a build is manually triggered), the Jenkins pipeline inside the cluster checks out the code.
+3.  **Build & Deploy:** Jenkins builds the frontend and backend applications. It then uses `kubectl` to apply the Kubernetes manifests, deploying the new versions of the applications. The build artifacts (JAR and dist files) are shared with the application pods using a shared Persistent Volume.
+4.  **Polling & Port-Forwarding:** The background script on the developer's host machine continuously polls the Jenkins API to check for the completion of a build.
+5.  **Success Detection:** Once the script detects a successful build, it triggers a second, smaller Ansible playbook.
+6.  **Automatic Access:** This second playbook waits for the new application pods to be stable and running, and then automatically starts `kubectl port-forward`. This makes the frontend and backend services immediately available on the developer's `localhost`.
 
 ## Getting Started: One-Time Setup
 
@@ -589,7 +591,7 @@ export JENKINS_API_TOKEN="your_copied_api_token"
 
 ## Daily Workflow
 
-After the one-time setup, your workflow is simple:
+After the one-time setup, your daily workflow is simple:
 
 1.  Make changes to the frontend or backend code in the `F-B-END` directory.
 2.  Trigger a build in Jenkins (either by pushing to your Git remote or by starting one manually in the UI).
@@ -635,4 +637,4 @@ You do not need to run any `kubectl` or `ansible` commands manually after the in
 
 ---
 
-(Τέλος αρχείου. Όλες οι ενότητες, διαγράμματα και flows διαμορφώνουν το σύστημα.) 
+(Τέλος αρχείου. Όλες οι ενότητες, διαγράμματα και flows διατηρούνται όπως στο αρχικό, απλώς μεταφρασμένα και ενημερωμένα.) 

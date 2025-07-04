@@ -16,14 +16,14 @@ ansible-playbook ansible/deploy-all.yml
 ```
 
 **What this does:**
-- ✅ Creates KIND cluster
-- ✅ Deploys ingress-nginx
-- ✅ Deploys PostgreSQL
-- ✅ **Generates self-signed certificates for Jenkins and Mailhog**
-- ✅ **Applies certificates to Kubernetes**
-- ✅ Deploys Jenkins with HTTPS
-- ✅ Deploys Mailhog with HTTPS
-- ❌ **No longer installs cert-manager** (removed)
+-  Creates KIND cluster
+-  Deploys ingress-nginx
+-  Deploys PostgreSQL
+-  **Generates self-signed certificates for Jenkins and Mailhog**
+-  **Applies certificates to Kubernetes**
+-  Deploys Jenkins with HTTPS
+-  Deploys Mailhog with HTTPS
+-  **No longer installs cert-manager** (removed)
 
 ### 2. Deploy Application (F-B-END)
 ```bash
@@ -33,11 +33,11 @@ https://jenkins.petsystem46.swedencentral.cloudapp.azure.com
 ```
 
 **What the Jenkinsfile does:**
-- ✅ Builds Frontend and Backend
-- ✅ **Generates self-signed certificates for Frontend, Backend, Minio**
-- ✅ **Applies certificates to Kubernetes**
-- ✅ Deploys all application services with HTTPS
-- ✅ Applies Ingress configurations
+-  Builds Frontend and Backend
+-  **Generates self-signed certificates for Frontend, Backend, Minio**
+-  **Applies certificates to Kubernetes**
+-  Deploys all application services with HTTPS
+-  Applies Ingress configurations
 
 ## Key Corrections Made
 
@@ -102,12 +102,12 @@ kubectl apply -f *-tls-secret.yaml
 ```
 
 ## Advantages of This Approach
-- ✅ **No external dependencies** (no cert-manager, no Let's Encrypt)
-- ✅ **Immediate availability** (no waiting for certificate issuance)
-- ✅ **Demo-friendly** (works immediately for presentations)
-- ✅ **Integrated deployment** (certificates are part of the deployment process)
-- ✅ **Separate concerns** (infrastructure vs application)
-- ✅ **Pipeline integration** (application certificates handled automatically)
+-  **No external dependencies** (no cert-manager, no Let's Encrypt)
+-  **Immediate availability** (no waiting for certificate issuance)
+-  **Demo-friendly** (works immediately for presentations)
+-  **Integrated deployment** (certificates are part of the deployment process)
+-  **Separate concerns** (infrastructure vs application)
+-  **Pipeline integration** (application certificates handled automatically)
 
 ## Next Steps
 1. Run `ansible-playbook ansible/deploy-all.yml` in Dpet directory
